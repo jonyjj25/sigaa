@@ -1,0 +1,27 @@
+# Sistema operativo y editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# Variables locales y secretos
+.env
+.env.*
+*.local
+
+# Frontend
+frontend/node_modules/
+frontend/www/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+
+# Backend
+backend/**/target/
+backend/**/logs/
+backend/**/*.log
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
