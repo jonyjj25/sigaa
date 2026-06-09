@@ -13,3 +13,10 @@ SIGAA/
 ├── frontend/             # Aplicacion Ionic / Angular
 ├── database/             # Scripts y notas de base de datos
 └── docs/                 # Documentacion tecnica y de instalacion
+
+
+Iniciar el Backend con: .\mvnw.cmd spring-boot:run desde backend/sigaa-api
+
+El frontend se insatla las dependecias con: npm install  -UNA VEZ, LA PRIMERA VEZ.
+
+Iniciar el frontend con: npm start

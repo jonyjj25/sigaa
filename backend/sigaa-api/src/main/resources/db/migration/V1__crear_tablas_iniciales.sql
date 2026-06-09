@@ -6,3 +6,7 @@ CREATE TABLE usuarios (
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO usuarios (nombre, correo, password, activo)
+VALUES ('Administrador SIGAA', 'admin@sigaa.com', 'admin123', TRUE)
+ON CONFLICT (correo) DO NOTHING;
