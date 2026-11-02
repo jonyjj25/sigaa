@@ -1,0 +1,307 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [userPhoto]="authService.currentUser()?.fotografiaRuta || ''"
+    [collapsed]="authService.sidebarCollapsed()" (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <section class="notas-content">
+      <app-correspondencia-tabs active="notas" />
+
+      <header class="page-header">
+        <div>
+          <span class="eyebrow">Control documental</span>
+          <h1>Notas</h1>
+          <p>Consecutivos, PDF oficial y trazabilidad de cada nota institucional.</p>
+        </div>
+        <div class="header-actions">
+          @if (can('Gestionar números')) {
+          <button type="button" class="btn-secondary" (click)="openNumeros()">
+            <ion-icon name="list-outline" aria-hidden="true" /> Administrar números
+          </button>
+          }
+          @if (can('Crear')) {
+          <button type="button" class="btn-primary" (click)="openNuevaNota()">
+            <ion-icon name="add-outline" aria-hidden="true" /> Nueva nota
+          </button>
+          }
+        </div>
+      </header>
+
+      @if (loading()) {
+      <div class="feedback" role="status"><ion-icon name="refresh-outline" /> Cargando notas y consecutivos…</div>
+      } @else if (loadError()) {
+      <div class="feedback error" role="alert">
+        <ion-icon name="close-outline" />
+        <div><strong>No fue posible cargar el módulo.</strong><span>Verifica la conexión con el servidor e inténtalo de
+            nuevo.</span></div>
+        <button type="button" class="btn-secondary" (click)="cargarDatos()">Reintentar</button>
+      </div>
+      } @else {
+      <section class="summary-grid" aria-label="Resumen de notas filtradas">
+        <article class="summary-card draft">
+          <ion-icon name="create-outline" aria-hidden="true" />
+          <div><strong>{{ borradores() }}</strong><span>Borradores</span></div>
+        </article>
+        <article class="summary-card available">
+          <ion-icon name="document-text-outline" aria-hidden="true" />
+          <div><strong>{{ totalDisponibles() }}</strong><span>Números disponibles</span></div>
+        </article>
+        <article class="summary-card following">
+          <ion-icon name="time-outline" aria-hidden="true" />
+          <div><strong>{{ enSeguimiento() }}</strong><span>En seguimiento</span></div>
+        </article>
+        <article class="summary-card signed">
+          <ion-icon name="checkmark-circle-outline" aria-hidden="true" />
+          <div><strong>{{ firmadas() }}</strong><span>Firmadas</span></div>
+        </article>
+        <article class="summary-card closed">
+          <ion-icon name="folder-open-outline" aria-hidden="true" />
+          <div><strong>{{ cerradas() }}</strong><span>Cerradas</span></div>
+        </article>
+      </section>
+
+      <section class="content-card" aria-label="Listado de notas">
+        <form class="toolbar" (ngSubmit)="aplicarFiltros()" aria-label="Filtros del listado de notas">
+          <label class="search-field">
+            <ion-icon name="search-outline" aria-hidden="true" />
+            <input type="search" name="query" aria-label="Buscar notas" placeholder="Número, asunto, destinatario o persona" maxlength="200" [ngModel]="filtroTexto()"
+              (ngModelChange)="filtroTexto.set($event)" />
+          </label>
+          <select name="estado" aria-label="Filtrar por estado" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+            <option value="TODAS">Todos los estados</option>
+            <option value="BORRADOR">Borradores</option>
+            <option value="EN_SEGUIMIENTO">En seguimiento</option>
+            <option value="FIRMADA">Firmadas</option>
+            <option value="CERRADA">Cerradas</option>
+            <option value="ANULADA">Anuladas</option>
+          </select>
+          <span class="results" aria-live="polite">{{ totalNotas() }} notas{{ filtrando() ? ' · buscando…' : '' }}</span>
+          <div class="filter-fields">
+            <label>Año<input type="number" name="anio" min="1" max="9999" step="1" placeholder="Todos" [ngModel]="filtroAnio()" (ngModelChange)="filtroAnio.set($event === null ? '' : '' + $event)" /></label>
+            <label>Fecha desde<input type="date" name="fechaDesde" [ngModel]="filtroFechaDesde()" (ngModelChange)="filtroFechaDesde.set($event)" /></label>
+            <label>Fecha hasta<input type="date" name="fechaHasta" [ngModel]="filtroFechaHasta()" (ngModelChange)="filtroFechaHasta.set($event)" /></label>
+          </div>
+          <div class="filter-actions">
+            <small>Las fechas corresponden a la fecha oficial de la nota. Para una fecha exacta, usa el mismo día en ambos campos.</small>
+            <button type="button" class="btn-secondary" (click)="limpiarFiltros()" [disabled]="filtrando()">Limpiar</button>
+            <button type="submit" class="btn-primary" [disabled]="filtrando()"><ion-icon name="search-outline" aria-hidden="true" /> Filtrar</button>
+          </div>
+        </form>
+
+        @if (!notasFiltradas().length) {
+        <div class="empty-state">
+          <ion-icon name="document-text-outline" aria-hidden="true" />
+          <h2>No hay notas para mostrar</h2>
+          <p>Cuando una persona reserve un número y registre la información, la nota aparecerá aquí; el PDF puede
+            añadirse después.</p>
+          @if (can('Crear') && totalDisponibles()) { <button type="button" class="btn-primary"
+            (click)="openNuevaNota()">Registrar la primera nota</button> }
+        </div>
+        } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Asunto y destino</th>
+                <th>Creada por</th>
+                <th>Seguimiento</th>
+                <th>Estado</th>
+                <th aria-label="Acciones"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (nota of notasFiltradas(); track nota.id) {
+              <tr (click)="verNota(nota)">
+                <td><strong class="number-code">{{ nota.numero }}</strong>@if (nota.sensitiva) { <span
+                    class="sensitive-badge"><ion-icon name="lock-closed-outline" /> Sensitiva</span> }<small>{{
+                    nota.fechaOficialTexto || formatFecha(nota.createdAt) }}</small></td>
+                <td><strong>{{ nota.asunto || 'Sin asunto' }}</strong><small>{{ nota.destinatarioNombre || 'Destinatario
+                    pendiente' }} · {{ nota.institucion?.nombre || 'Institución pendiente' }}</small></td>
+                <td>{{ nota.creadoPor.nombre }}</td>
+                <td>{{ nota.seguimientoUsuario.nombre }}</td>
+                <td><span class="estado" [class]="estadoClase(nota.estado)">{{ estadoLabel(nota.estado) }}</span></td>
+                <td class="row-actions" (click)="$event.stopPropagation()">
+                  <button type="button" title="Previsualizar documento" (click)="abrirVistaPrevia(nota)" aria-label="Previsualizar documento"><ion-icon
+                      name="eye-outline" /></button>
+                  @if (can('Descargar') && nota.tienePdf) { <button type="button" title="Abrir PDF"
+                    (click)="abrirPdf(nota)" aria-label="Abrir PDF"><ion-icon name="download-outline" /></button> }
+                  @else if (!nota.tienePdf) { <span class="pdf-pending">PDF pendiente</span> }
+                  @if (can('Descargar') && nota.estado !== 'BORRADOR' && nota.estado !== 'ANULADA') { <button
+                    type="button" title="Descargar Word institucional" (click)="descargarWord(nota)" aria-label="Descargar Word institucional"><ion-icon
+                      name="document-text-outline" /></button><button type="button" title="Descargar PDF institucional generado"
+                      (click)="descargarWord(nota, 'pdf')" aria-label="Descargar PDF institucional generado"><ion-icon name="download-outline" /></button> }
+                  @if (can('Editar') && (nota.estado === 'BORRADOR' || nota.estado === 'EN_SEGUIMIENTO')) { <button
+                    type="button" title="Editar nota" (click)="openEditarNota(nota)" aria-label="Editar nota"><ion-icon
+                      name="create-outline" /></button> }
+                  @if (can('Firmar') && nota.estado === 'BORRADOR') { <button type="button"
+                    title="Finalizar y oficializar" (click)="oficializar(nota)" aria-label="Finalizar y oficializar"><ion-icon
+                      name="checkmark-circle-outline" /></button> }
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+        @if (totalPaginas() > 1) {
+        <nav class="pagination" aria-label="Páginas de notas">
+          <button type="button" class="btn-secondary" [disabled]="filtrando() || pagina() === 0" (click)="cambiarPagina(pagina() - 1)">Anterior</button>
+          <span>Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+          <button type="button" class="btn-secondary" [disabled]="filtrando() || pagina() + 1 >= totalPaginas()" (click)="cambiarPagina(pagina() + 1)">Siguiente</button>
+        </nav>
+        }
+      </section>
+
+      }
+    </section>
+  </main>
+</div>
+
+@if (showNotaModal()) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="nota-modal-title">
+    <header>
+      <div><span class="eyebrow">Notas institucionales</span>
+        <h2 id="nota-modal-title">{{ modalTitle() }}</h2>
+      </div><button type="button" class="icon-close" (click)="closeNotaModal()" aria-label="Cerrar" title="Cerrar"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="modal-body">
+      <label class="full">Fecha oficial<input [value]="notaEnEdicion()?.fechaOficialTexto || fechaOficialTexto()"
+          disabled /><small>Asignada por el servidor con la zona horaria de Panamá. No puede
+          modificarse.</small></label>
+      @if (editandoId()) {
+      <label>Número de nota<input [value]="notaEnEdicion()?.numero || ''" disabled /></label>
+      } @else {
+      <label>Número disponible <select [ngModel]="formNumeroId()" (ngModelChange)="onNumeroSeleccionado($event)"
+          [disabled]="reserving()" [class.invalid]="formSubmitted() && !formNumeroId()">
+          <option value="" disabled>{{ reserving() ? 'Reservando…' : 'Selecciona un número' }}</option>@for (numero of
+          numerosSeleccionables(); track numero.id) { <option [value]="numero.id">{{ numero.numero }}{{
+            numero.reservaPropia ? ' · reservado por ti' : '' }}</option> }
+        </select><small>@if (formNumeroId()) { Reserva activa durante 10 minutos sin renovación automática. } @else {
+          Solo puede seleccionarse el primer número disponible de la secuencia; puedes conservar una reserva propia vigente.
+          }</small></label>
+      }
+      <label>Asunto <input [ngModel]="formAsunto()" (ngModelChange)="formAsunto.set($event)" maxlength="200"
+          placeholder="Puede completarse antes de oficializar" /></label>
+      <label>Institución <input type="search" placeholder="Buscar institución" [ngModel]="institucionBusqueda()"
+          (ngModelChange)="institucionBusqueda.set($event)" /><select [ngModel]="formInstitucionId()"
+          (ngModelChange)="destinatarioForm.cambiarInstitucion($event)">
+          <option value="">Selecciona una institución activa</option>@for (institucion of institucionesFiltradas();
+          track institucion.id) { <option [value]="institucion.id">{{ institucion.nombre }}{{ institucion.siglas ? ' ('
+            + institucion.siglas + ')' : '' }}</option> }
+        </select><small>Las opciones se cargan desde el catálogo de organizaciones del sistema.</small></label>
+      <label>Departamento / Área<select [ngModel]="formDepartamentoId()"
+          (ngModelChange)="destinatarioForm.cambiarDepartamento($event)"
+          [disabled]="!formInstitucionId() || destinatarioForm.cargando()">
+          <option value="">Selecciona un departamento / área</option>
+          @for (departamento of destinatarioForm.opcionesDepartamentos(); track departamento.id) {
+          <option [value]="departamento.id">{{ departamento.nombre }}{{ departamento.guardado ? ' · guardado en la nota' : '' }}</option>
+          }
+        </select><small>@if (destinatarioForm.cargando()) { Cargando departamentos… }
+          @else if (formInstitucionId() && !destinatarioForm.error() && !destinatarioForm.opcionesDepartamentos().length) {
+          Esta institución no tiene departamentos activos configurados.
+          } @else { El destinatario y su cargo se completan al seleccionar un departamento. }</small></label>
+      @if (destinatarioForm.error()) {
+      <div class="full feedback error" role="alert"><span>{{ destinatarioForm.error() }}</span>
+        <button type="button" class="btn-secondary" (click)="destinatarioForm.reintentar()">Reintentar</button></div>
+      }
+      <label>Nombre del destinatario <input [ngModel]="formDestinatarioNombre()"
+          (ngModelChange)="formDestinatarioNombre.set($event)" maxlength="200" placeholder="Nombre completo" /></label>
+      <label>Cargo del destinatario <input [ngModel]="formDestinatarioCargo()"
+          (ngModelChange)="formDestinatarioCargo.set($event)" maxlength="200" placeholder="Cargo" /></label>
+      <label>Responsable del seguimiento <select [ngModel]="formSeguimientoId()"
+          (ngModelChange)="formSeguimientoId.set($event)" [class.invalid]="formSubmitted() && !formSeguimientoId()">
+          <option value="" disabled>Selecciona una persona</option>@for (usuario of usuarios(); track usuario.id) {
+          <option [value]="usuario.id">{{ usuario.nombre }}</option> }
+        </select></label>
+      <label class="full">Contenido de la nota<textarea #contenidoEditor class="nota-editor" rows="8" maxlength="15000" [ngModel]="formContenido()"
+          (ngModelChange)="formContenido.set($event)"
+          placeholder="Redacta aquí el cuerpo de la nota"></textarea><small>El contenido puede guardarse y continuar
+          editándose mientras la nota sea un borrador. Verdana 11; Enter separa párrafos.</small></label>
+      <button type="button" class="btn-secondary" (click)="formContenido.set(insertarSaltoPagina(contenidoEditor))">Insertar salto de página</button>
+      <section class="full signature-preview" aria-label="Firma institucional"><span>Firma automática</span>@if
+        (directoraActual(); as directora) { <strong>{{ directora.cargo.toLocaleUpperCase() }}</strong><strong>{{ directora.nombre.toLocaleUpperCase()
+          }}</strong><small>{{ directora.institucion || 'Institución profesional pendiente' }}</small> } @else {
+        <strong>Director/a no configurado</strong><small>{{ advertenciaDirectora() }}</small> }
+      </section>
+      <label class="full sensitive-field"><input type="checkbox" [ngModel]="formSensitiva()"
+          (ngModelChange)="formSensitiva.set($event)" /><span><strong>Nota sensitiva</strong><small>Identifica contenido
+            que requiere manejo cuidadoso.</small></span></label>
+      @if (!editandoId() && can('Relacionar')) {
+      <section class="full relation-picker" aria-label="Relacionar con otras notas">
+        <label>Notas relacionadas<div class="relation-search"><input type="search" [ngModel]="relacionBusqueda()"
+              (ngModelChange)="relacionBusqueda.set($event)" (keyup.enter)="buscarNotasRelacionables()"
+              placeholder="Buscar por nombre o número" /><select aria-label="Tipo de relación"
+              [ngModel]="relacionTipo()" (ngModelChange)="relacionTipo.set($event)">
+              <option value="RELACIONADA_CON">Relacionada con</option>
+              <option value="RESPONDE_A">Responde a</option>
+              <option value="ANTECEDENTE_DE">Antecedente de</option>
+            </select><button type="button" class="btn-secondary"
+              [disabled]="relacionBusqueda().trim().length < 2 || buscandoRelaciones()"
+              (click)="buscarNotasRelacionables()">{{ buscandoRelaciones() ? 'Buscando…' : 'Buscar' }}</button></div>
+          <small>Busca por número, asunto, creador o responsable del seguimiento.</small></label>
+        @if (relacionResultados().length) { <div class="relation-results">@for (resultado of relacionResultados(); track
+          resultado.id) { <button type="button" (click)="agregarRelacion(resultado, relacionTipo())"><strong>{{
+              resultado.numero }} · {{ resultado.asunto }}</strong><span>{{ resultado.seguimientoUsuario?.nombre ||
+              resultado.creadoPor?.nombre || 'Sin responsable' }}</span></button> }</div> }
+        @if (relacionesSeleccionadas().length) { <div class="relation-selected">@for (relacion of
+          relacionesSeleccionadas(); track relacion.nota.id + relacion.tipo; let index = $index) { <span><strong>{{
+              relacion.nota.numero }}</strong> · {{ relacion.tipo.replace('_', ' ') }}<button type="button"
+              aria-label="Quitar relación" (click)="quitarRelacion(index)">×</button></span> }</div> }
+      </section>
+      }
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="abrirVistaPreviaFormulario()"><ion-icon
+          name="eye-outline" /> Vista previa</button><button type="button" class="btn-secondary"
+        (click)="closeNotaModal()">Cancelar</button><button type="button" class="btn-primary" [disabled]="saving()"
+        (click)="guardarNota()">{{ saving() ? 'Guardando…' : 'Guardar borrador' }}</button></footer>
+  </section>
+</div>
+}
+
+@if (vistaPrevia(); as preview) {
+<app-nota-document-preview [data]="preview"
+  [pdfUrl]="can('Descargar') && preview.estado === 'OFICIALIZADA' && preview.notaId ? '/api/notas/' + preview.notaId + '/documento.pdf' : undefined"
+  (closed)="cerrarVistaPrevia()" />
+}
+
+@if (showNumerosModal()) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card numbers-modal" role="dialog" aria-modal="true" aria-labelledby="numeros-modal-title">
+    <header>
+      <div><span class="eyebrow">Inventario de consecutivos</span>
+        <h2 id="numeros-modal-title">Números de notas</h2>
+      </div><button type="button" class="icon-close" (click)="closeNumeros()" aria-label="Cerrar" title="Cerrar"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="modal-body numbers-body">
+      <label class="full">Cargar números desde el control actual<textarea rows="4" [ngModel]="cargaNumeros()"
+          (ngModelChange)="cargaNumeros.set($event)"
+          placeholder="Pega los números desde Excel: uno por línea, columna o separados por coma"></textarea><small>La
+          carga rechaza duplicados y los incorpora como disponibles.</small></label>
+      <button type="button" class="btn-primary upload-button" [disabled]="saving()"
+        (click)="cargarLoteNumeros()"><ion-icon name="cloud-upload-outline" /> {{ saving() ? 'Cargando…' : 'Cargar
+        números' }}</button>
+      <div class="number-legend"><span class="legend available-dot"></span> Disponible <span
+          class="legend reserved-dot"></span> Reservado <span class="legend occupied-dot"></span> Ocupado</div>
+      <div class="number-grid" aria-label="Estado de números cargados">
+        @for (numero of numeros(); track numero.id) {
+        <article class="number-card" [class.reserved]="numero.estado === 'RESERVADO'"
+          [class.occupied]="numero.estado === 'OCUPADO'">
+          <strong>{{ numero.numero }}</strong>
+          @if (numero.estado === 'DISPONIBLE') { <span>Disponible</span> }
+          @else if (numero.estado === 'RESERVADO') { <span>Reservado por {{ numero.reservadoPor?.nombre || 'usuario' }}
+            hasta {{ formatFecha(numero.reservadoHasta) }}</span> }
+          @else { <span>Tomado por {{ numero.tomadoPor?.nombre || 'usuario' }}</span> }
+        </article>
+        } @empty { <p class="no-numbers">Todavía no hay números cargados.</p> }
+      </div>
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="closeNumeros()">Cerrar</button></footer>
+  </section>
+</div>
+}

@@ -1,0 +1,563 @@
+.page-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-icon {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  color: #fff;
+  background: var(--institutional-blue);
+  box-shadow: 0 9px 20px rgba(37, 99, 235, .22);
+  font-size: 23px;
+}
+
+.eyebrow,
+.section-kicker {
+  display: block;
+  color: var(--institutional-blue);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin-bottom: 3px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -.5px;
+}
+
+.subtitle {
+  max-width: 660px;
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 17px;
+  border: 1px solid var(--institutional-blue);
+  border-radius: 10px;
+  background: var(--institutional-blue);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(37, 99, 235, .2);
+  cursor: pointer;
+  font: 700 13px inherit;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .28);
+}
+
+.btn-primary ion-icon {
+  font-size: 18px;
+}
+
+.locations-card {
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-panel);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .055);
+}
+
+.locations-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(135deg, var(--surface-panel), var(--surface-subtle));
+}
+
+.locations-card-header h2 {
+  margin: 3px 0 0;
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -.2px;
+}
+
+.locations-card-header p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.location-count {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--state-info-border);
+  border-radius: 999px;
+  background: var(--state-info-bg);
+  color: var(--state-info-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.data-table tbody tr {
+  transition: background-color .18s ease;
+}
+
+.data-table tbody tr:hover {
+  background: var(--surface-subtle);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.sede-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-strong);
+  font-weight: 750;
+}
+
+.sede-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+  font-size: 16px;
+}
+
+.sede-addr {
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+.sede-coords {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sede-coords ion-icon {
+  margin-right: 4px;
+  color: var(--institutional-blue);
+  font-size: 15px;
+  vertical-align: -2px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 60px;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.badge-info {
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+}
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.btn-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--control-border);
+  border-radius: 9px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+}
+
+.btn-icon:hover {
+  border-color: var(--institutional-blue);
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+}
+
+.btn-icon-danger:hover {
+  border-color: var(--state-danger-border);
+  background: var(--state-danger-bg);
+  color: var(--state-danger-text);
+}
+
+.empty-cell {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 44px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.empty-cell ion-icon {
+  color: var(--institutional-blue);
+  font-size: 29px;
+}
+
+.empty-cell strong {
+  color: var(--text-strong);
+  font-size: 14px;
+}
+
+.empty-cell span {
+  font-size: 12px;
+}
+
+ion-modal.ubicacion-modal {
+  --width: min(520px, calc(100vw - 28px));
+  --height: fit-content;
+  --border-radius: 16px;
+  --box-shadow: 0 18px 48px rgba(0, 0, 0, .22);
+  --backdrop-opacity: .5;
+}
+
+.modal-wrapper {
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -.2px;
+}
+
+.modal-close-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--control-border);
+  border-radius: 9px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-strong);
+  background: var(--surface-subtle);
+}
+
+.modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.form-row {
+  display: grid;
+  gap: 6px;
+}
+
+.form-label {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  outline: none;
+  background: var(--control-bg);
+  color: var(--control-text);
+  font: 13px inherit;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.form-input:focus {
+  border-color: var(--institutional-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .13);
+}
+
+.coords-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--state-info-border);
+  border-radius: 8px;
+  background: var(--state-info-bg);
+  color: var(--state-info-text);
+  cursor: pointer;
+  font: 700 11px inherit;
+}
+
+.btn-gps:disabled {
+  opacity: .65;
+  cursor: default;
+}
+
+.btn-gps ion-icon {
+  font-size: 15px;
+}
+
+.gps-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--state-info-text);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.coords-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.coord-field {
+  display: grid;
+  gap: 5px;
+}
+
+.coord-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.error-msg {
+  margin: 0;
+  color: var(--state-danger-text);
+  font-size: 12px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 0 20px 20px;
+}
+
+.btn-cancel,
+.btn-save {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  font: 700 12px inherit;
+}
+
+.btn-cancel {
+  border: 1px solid var(--control-border);
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+  background: var(--surface-subtle);
+  color: var(--text-strong);
+}
+
+.btn-save {
+  border: 1px solid var(--institutional-blue);
+  background: var(--institutional-blue);
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .locations-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .location-count {
+    align-self: flex-start;
+  }
+
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .data-table tr {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .data-table td {
+    display: grid;
+    grid-template-columns: minmax(100px, .7fr) 1.3fr;
+    gap: 10px;
+    padding: 7px 0;
+    border: 0;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .data-table .sede-name {
+    display: flex;
+  }
+
+  .data-table .sede-name::before {
+    display: none;
+  }
+
+  .actions-cell {
+    justify-content: flex-start;
+  }
+
+  .empty-cell {
+    display: grid;
+    padding: 36px 16px;
+  }
+
+  .empty-cell::before {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .btn-primary {
+    width: 100%;
+  }
+
+  .coords-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .coords-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,423 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [userPhoto]="authService.currentUser()?.fotografiaRuta || ''"
+    [collapsed]="authService.sidebarCollapsed()" (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <section class="detail-page">
+      <app-correspondencia-tabs active="notas" />
+
+      <button type="button" class="back-button" (click)="volver()"><span><ion-icon name="arrow-back-outline" /></span>
+        <div><small>Regresar al listado</small><strong>Notas institucionales</strong></div>
+      </button>
+
+      @if (loading()) {
+      <div class="feedback" role="status"><ion-icon name="refresh-outline" /> Cargando detalle de la nota…</div>
+      } @else if (loadError() || !nota()) {
+      <div class="feedback error" role="alert"><ion-icon name="close-outline" />
+        <div><strong>No fue posible abrir esta nota.</strong><span>Puede que no exista o que no tengas permisos para
+            verla.</span></div><button type="button" class="btn-secondary" (click)="volver()">Volver al listado</button>
+      </div>
+      } @else if (nota(); as item) {
+      <article class="note-card">
+        <header class="note-header">
+          <div><span class="eyebrow">Nota {{ item.numero }}</span>
+            <h1>{{ item.asunto || 'Borrador sin asunto' }}</h1>
+            <p>{{ item.fechaOficialTexto }}</p>
+          </div>
+          <div class="status-badges">@if (item.sensitiva) { <span class="sensitive-badge"><ion-icon
+                name="lock-closed-outline" /> Nota sensitiva</span> }<span class="estado"
+              [class]="estadoClase(item.estado)">{{ estadoLabel(item.estado) }}</span>
+            @if (item.seguimiento?.estado) { <span class="estado">{{ item.seguimiento?.estadoTexto }}</span> }
+          </div>
+        </header>
+
+        <section class="information-grid" aria-label="Información de la nota">
+          <div class="info-block"><ion-icon name="people-outline" />
+            <div><span>Destinatario</span><strong>{{ item.destinatarioNombre || 'Pendiente' }}</strong><small>{{
+                item.destinatarioCargo || 'Cargo pendiente' }} · {{ item.institucion?.nombre || 'Institución pendiente'
+                }}</small>@if (item.departamento) { <small>{{ item.departamento.nombre }}</small> }</div>
+          </div>
+          <div class="info-block"><ion-icon name="person-outline" />
+            <div><span>Quién la hizo</span><strong>{{ item.creadoPor.nombre }}</strong></div>
+          </div>
+          <div class="info-block"><ion-icon name="time-outline" />
+            <div><span>Da seguimiento</span><strong>{{ item.seguimientoUsuario.nombre }}</strong></div>
+          </div>
+          <div class="info-block"><ion-icon name="document-text-outline" />
+            <div><span>PDF oficial</span>@if (item.tienePdf) { <button type="button" class="file-link"
+                (click)="abrirPdf(item)">{{ item.pdfNombre }} · {{ formatBytes(item.pdfTamanoBytes) }} <ion-icon
+                  name="download-outline" /></button> } @else { <strong class="pending-copy">PDF pendiente</strong> }
+            </div>
+          </div>
+          @if (item.contenido) { <div class="description-block"><span>Contenido de la nota</span>
+            <p>{{ item.contenido }}</p>
+          </div> }
+          <div class="status-block signed-block"><span>Firmante institucional</span><strong>{{ item.firmanteNombre ||
+              (item.estado === 'BORRADOR' ? 'Se asignará al oficializar' : '—') }}</strong><small>{{ item.firmanteCargo
+              || '' }}</small></div>
+          @if (item.firmadaAt) { <div class="status-block signed-block"><span>Registro de firma de dirección</span><strong>{{
+              item.firmadaPor?.nombre || '—' }}</strong><small>{{ formatFecha(item.firmadaAt) }}</small></div> }
+          @if (item.cerradaAt) { <div class="status-block closed-block"><span>Cierre registrado</span><strong>{{
+              item.cerradaPor?.nombre || '—' }}</strong><small>{{ formatFecha(item.cerradaAt) }}</small></div> }
+          @if (item.anuladaAt) { <div class="status-block annulled-block"><span>Anulación registrada</span><strong>{{
+              item.anuladaPor?.nombre || '—' }}</strong>
+            <p>{{ item.anulacionMotivo }}</p><small>{{ formatFecha(item.anuladaAt) }}</small>
+          </div> }
+        </section>
+
+        <footer class="note-actions">
+          <button type="button" class="btn-secondary" (click)="abrirVistaPrevia(item)"><ion-icon name="eye-outline" />
+            Vista previa</button>
+          @if (can('Firmar') && item.estado === 'BORRADOR') { <button type="button" class="btn-success"
+            (click)="oficializar(item)"><ion-icon name="checkmark-circle-outline" /> Oficializar nota</button>
+          } @else if (item.oficializadaAt || item.estado === 'EN_SEGUIMIENTO' || item.estado === 'FIRMADA' || item.estado === 'CERRADA') {
+          <span class="officialized-action" role="status" title="Esta nota ya fue oficializada">
+            <ion-icon name="checkmark-circle-outline" /> Nota oficializada
+          </span>
+          }
+          @if (can('Descargar') && item.estado !== 'BORRADOR' && item.estado !== 'ANULADA') { <button type="button"
+            class="btn-secondary" (click)="descargarWord(item)"><ion-icon name="download-outline" /> Descargar
+            Word</button><button type="button" class="btn-secondary" (click)="descargarWord(item, 'pdf')"><ion-icon name="download-outline" /> Descargar PDF generado</button> }
+          @if (puedeAdjuntarPdf(item)) { <input #pdfInput type="file" accept="application/pdf,.pdf" hidden
+            (change)="adjuntarPdf($event)" /><button type="button" class="btn-secondary" [disabled]="uploading()"
+            (click)="pdfInput.click()"><ion-icon name="cloud-upload-outline" /> {{ uploading() ? 'Cargando…' :
+            item.tienePdf ? 'Cargar nueva versión' : 'Adjuntar PDF firmado' }}</button> }
+          @if (can('Editar') && item.estado === 'BORRADOR' && !item.oficializadaAt && !item.oficializadaPor) { <button
+            type="button" class="btn-secondary" (click)="editar()"><ion-icon name="create-outline" /> Editar</button> }
+          @if (can('Firmar') && item.estado === 'EN_SEGUIMIENTO') { <button type="button" class="btn-success"
+            (click)="firmar(item)"><ion-icon name="checkmark-circle-outline" /> Marcar firmada</button> }
+          @if (can('Cerrar') && item.estado === 'FIRMADA') { <button type="button" class="btn-primary"
+            (click)="cerrar(item)"><ion-icon name="folder-open-outline" /> Cerrar nota</button> }
+          @if (can('Anular') && item.estado !== 'ANULADA') { <button type="button" class="btn-danger"
+            (click)="anular(item)"><ion-icon name="ban-outline" /> Anular nota</button> }
+        </footer>
+      </article>
+
+      @if (can('Descargar')) { <section class="updates-card document-card" aria-label="Versiones del PDF">
+        <header>
+          <div><span class="eyebrow">Documentos</span>
+            <h2>Versiones del PDF</h2>
+            <p>Consulta las versiones activas o retira una indicando el motivo.</p>
+          </div><span class="update-count">{{ item.pdfs.length }} versiones</span>
+        </header>
+        @if (item.pdfs.length) {
+        <div class="version-list">
+          @for (pdf of item.pdfs; track pdf.id) {
+          <article>
+            <div><strong>Versión {{ pdf.numeroVersion }} @if (pdf.vigente) { <span class="current-badge">Vigente</span>
+                }</strong><span>{{ pdf.nombreOriginal }} · {{ formatBytes(pdf.tamanoBytes) }}</span><small>Cargada por
+                {{ pdf.usuario?.nombre || 'Sistema' }} · {{ formatFecha(pdf.createdAt) }}</small></div>
+            <div class="version-actions">@if (can('Descargar')) { <button type="button" class="btn-secondary"
+                (click)="abrirVersion(pdf)"><ion-icon name="download-outline" /> Abrir</button> }@if (can('Eliminar
+              PDF')) { <button type="button" class="btn-delete-file" [disabled]="!!deletingPdfId()"
+                (click)="eliminarPdf(pdf)"><ion-icon name="trash-outline" /> {{ deletingPdfId() === pdf.id ?
+                'Eliminando…' : 'Eliminar' }}</button> }</div>
+          </article>
+          }
+        </div>
+        } @else { <p class="no-updates">@if (item.puedeAdjuntarPdf) { El PDF firmado está pendiente de adjuntar. }
+          @else { El PDF se adjunta después de registrar «Firmada por el receptor» en la trazabilidad. }</p> }
+      </section> }
+
+      @if (item.relaciones.length) {
+      <section class="updates-card relation-card" aria-label="Notas relacionadas">
+        <header>
+          <div><span class="eyebrow">Vínculos documentales</span>
+            <h2>Notas relacionadas</h2>
+            <p>Consulta antecedentes, respuestas y notas relacionadas.</p>
+          </div><span class="update-count">{{ item.relaciones.length }} relaciones</span>
+        </header>
+        @if (can('Relacionar')) {
+        <div class="relation-toolbar"><input type="search" [ngModel]="relacionBusqueda()"
+            (ngModelChange)="relacionBusqueda.set($event)" (keyup.enter)="buscarRelacionables()"
+            placeholder="Buscar por nombre o número" /><select [ngModel]="relacionTipo()"
+            (ngModelChange)="relacionTipo.set($event)" aria-label="Tipo de relación">
+            <option value="RELACIONADA_CON">Relacionada con</option>
+            <option value="RESPONDE_A">Responde a</option>
+            <option value="ANTECEDENTE_DE">Antecedente de</option>
+          </select><button type="button" class="btn-secondary"
+            [disabled]="relacionBusqueda().trim().length < 2 || relacionando()"
+            (click)="buscarRelacionables()"><ion-icon name="search-outline" /> Buscar</button></div>
+        @if (relacionResultados().length) { <div class="relation-results">@for (resultado of relacionResultados(); track
+          resultado.id) { <button type="button" (click)="crearRelacion(resultado)"><strong>{{ resultado.numero }} · {{
+              resultado.asunto }}</strong><span>{{ resultado.seguimientoUsuario?.nombre || resultado.creadoPor?.nombre
+              || 'Sin responsable' }}</span><small>Agregar como {{ relacionTipo().replace('_', ' ') }}</small></button>
+          }</div> }
+        }
+        <div class="linked-notes">@for (relacion of item.relaciones; track relacion.id) { <article><button type="button"
+              class="linked-main" (click)="verRelacionada(relacion.nota.id)"><ion-icon
+                name="link-outline" /><span><small>{{ relacionLabel(relacion.tipo, relacion.direccion)
+                  }}</small><strong>{{ relacion.nota.numero }} · {{ relacion.nota.asunto }}</strong><em>{{
+                  estadoLabel(relacion.nota.estado) }}</em></span></button>@if (can('Relacionar')) { <button
+              type="button" class="remove-link" title="Eliminar relación"
+              (click)="eliminarRelacion(relacion.id)" aria-label="Eliminar relación"><ion-icon name="trash-outline" /></button> }</article> }</div>
+      </section>
+      }
+
+      <section class="updates-card" aria-label="Todas las actualizaciones">
+        <header>
+          <div><span class="eyebrow">Trazabilidad</span>
+            <h2>Todas las actualizaciones</h2>
+            <p>Cada cambio realizado sobre la nota queda registrado aquí.</p>
+          </div><span class="update-count">{{ item.historial.length }} eventos</span>
+        </header>
+        @if (item.seguimiento; as seguimiento) {
+        <div class="followup-status" role="status">
+          <span>{{ item.estado === 'CERRADA' || item.estado === 'ANULADA' ? 'Último avance de seguimiento' : 'Estado del seguimiento' }}</span>
+          <strong>{{ seguimiento.estadoTexto }}</strong>
+          @if (seguimiento.createdAt) { <small>{{ seguimiento.usuario?.nombre || 'Sistema' }} · {{ formatFecha(seguimiento.createdAt) }}</small> }
+        </div>
+        @if (seguimiento.puedeComentar || seguimiento.opciones.length) {
+        <form class="followup-form" (ngSubmit)="registrarSeguimiento()" aria-label="Registrar seguimiento de la nota">
+          @if (seguimiento.opciones.length) {
+          <label for="followup-state">Avance de seguimiento</label>
+          <select id="followup-state" name="seguimientoEstado" [ngModel]="seguimientoEstado()"
+            (ngModelChange)="seguimientoEstado.set($event)" [disabled]="guardandoSeguimiento()">
+            <option value="">{{ seguimiento.puedeComentar ? 'Solo agregar comentario' : 'Selecciona un avance' }}</option>
+            @for (opcion of seguimiento.opciones; track opcion.estado) { <option [value]="opcion.estado">{{ opcion.texto }}</option> }
+          </select>
+          }
+          @if (seguimiento.puedeComentar) {
+          <label for="followup-comment">Comentario de seguimiento</label>
+          <textarea id="followup-comment" name="seguimientoComentario" rows="3" maxlength="5000"
+            [ngModel]="seguimientoComentario()" (ngModelChange)="seguimientoComentario.set($event)"
+            [disabled]="guardandoSeguimiento()" placeholder="Describe el avance de la nota"></textarea>
+          }
+          <small>Se guardará en esta trazabilidad con tu usuario y la fecha del registro.</small>
+          @if (errorSeguimiento()) { <p class="followup-error" role="alert">{{ errorSeguimiento() }}</p> }
+          <button type="submit" class="btn-primary" [disabled]="guardandoSeguimiento() || (!seguimientoEstado() && seguimientoComentario().trim().length < 3)">
+            {{ guardandoSeguimiento() ? 'Registrando…' : 'Registrar seguimiento' }}
+          </button>
+        </form>
+        }
+        }
+        @if (item.historial.length) {
+        <ol class="timeline">
+          @for (evento of item.historial; track evento.id) {
+          <li><span class="timeline-dot"></span>
+            <div class="timeline-content">
+              <div class="event-heading"><strong>{{ evento.accionTexto || evento.accion }}</strong><time>{{ formatFecha(evento.createdAt)
+                  }}</time></div>
+              <p>{{ evento.detalle }}</p><small>Por {{ evento.usuario?.nombre || 'Sistema' }}@if (evento.estadoNuevo) {
+                <span> · {{ estadoLabel(evento.estadoNuevo) }}</span> }</small>
+            </div>
+          </li>
+          }
+        </ol>
+        } @else { <p class="no-updates">Aún no hay actualizaciones registradas.</p> }
+      </section>
+      }
+    </section>
+  </main>
+</div>
+
+@if (showEditModal() && nota(); as item) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-note-title">
+    <header>
+      <div><span class="eyebrow">Nota {{ item.numero }}</span>
+        <h2 id="edit-note-title">Actualizar nota</h2>
+      </div><button type="button" class="icon-close" aria-label="Cerrar" (click)="cerrarEdicion()" title="Cerrar"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="modal-body">
+      <label class="full">Fecha de la nota<input type="date" required [ngModel]="editFechaOficial()"
+          (ngModelChange)="editFechaOficial.set($event)"
+          [disabled]="item.estado !== 'BORRADOR' || !!item.oficializadaAt || !!item.oficializadaPor"
+          [class.invalid]="editSubmitted() && !editFechaOficial()" /><small>Solo puede cambiarse antes de
+          oficializar la nota. Cada cambio queda registrado en la trazabilidad.</small>
+        @if (editSubmitted() && !editFechaOficial()) { <small>Selecciona una fecha válida.</small> }
+      </label>
+      <label>Número de nota<input [value]="item.numero" disabled /></label>
+      <label>Asunto<input maxlength="200" [ngModel]="editAsunto()" (ngModelChange)="editAsunto.set($event)" /></label>
+      <label>Institución<input type="search" placeholder="Buscar institución" [ngModel]="institucionBusqueda()"
+          (ngModelChange)="institucionBusqueda.set($event)" /><select [ngModel]="editInstitucionId()"
+          (ngModelChange)="destinatarioForm.cambiarInstitucion($event)">
+          <option value="">Selecciona una institución activa</option>@for (institucion of institucionesFiltradas();
+          track institucion.id) { <option [value]="institucion.id">{{ institucion.nombre }}{{ institucion.siglas ? ' ('
+            + institucion.siglas + ')' : '' }}</option> }
+        </select></label>
+      <label>Departamento / Área<select [ngModel]="editDepartamentoId()"
+          (ngModelChange)="destinatarioForm.cambiarDepartamento($event)"
+          [disabled]="!editInstitucionId() || destinatarioForm.cargando()">
+          <option value="">Selecciona un departamento / área</option>
+          @for (departamento of destinatarioForm.opcionesDepartamentos(); track departamento.id) {
+          <option [value]="departamento.id">{{ departamento.nombre }}{{ departamento.guardado ? ' · guardado en la nota' : '' }}</option>
+          }
+        </select><small>@if (destinatarioForm.cargando()) { Cargando departamentos… }
+          @else if (editInstitucionId() && !destinatarioForm.error() && !destinatarioForm.opcionesDepartamentos().length) {
+          Esta institución no tiene departamentos activos configurados.
+          } @else { Se conserva el destinatario guardado hasta que cambies la selección. }</small></label>
+      @if (destinatarioForm.error()) {
+      <div class="full feedback error" role="alert"><span>{{ destinatarioForm.error() }}</span>
+        <button type="button" class="btn-secondary" (click)="destinatarioForm.reintentar()">Reintentar</button></div>
+      }
+      <label>Nombre del destinatario<input maxlength="200" [ngModel]="editDestinatarioNombre()"
+          (ngModelChange)="editDestinatarioNombre.set($event)" /></label>
+      <label>Cargo del destinatario<input maxlength="200" [ngModel]="editDestinatarioCargo()"
+          (ngModelChange)="editDestinatarioCargo.set($event)" /></label>
+      <label>Responsable del seguimiento<select [ngModel]="editSeguimientoId()"
+          (ngModelChange)="editSeguimientoId.set($event)" [class.invalid]="editSubmitted() && !editSeguimientoId()">
+          <option value="" disabled>Selecciona una persona</option>@for (usuario of usuarios(); track usuario.id) {
+          <option [value]="usuario.id">{{ usuario.nombre }}</option> }
+        </select></label>
+      <label class="full">Contenido de la nota<textarea #contenidoEditor class="nota-editor" rows="8" maxlength="15000" [ngModel]="editContenido()"
+          (ngModelChange)="editContenido.set($event)" placeholder="Redacta el cuerpo de la nota"></textarea><small>El
+          mismo registro se actualizará y conservará su número. Verdana 11; Enter separa párrafos.</small></label>
+      <button type="button" class="btn-secondary" (click)="editContenido.set(insertarSaltoPagina(contenidoEditor))">Insertar salto de página</button>
+      <label class="full sensitive-field"><input type="checkbox" [ngModel]="editSensitiva()"
+          (ngModelChange)="editSensitiva.set($event)" /><span><strong>Nota sensitiva</strong><small>Identifica contenido
+            que requiere manejo cuidadoso.</small></span></label>
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="abrirVistaPreviaEdicion(item)"><ion-icon
+          name="eye-outline" /> Vista previa</button><button type="button" class="btn-secondary"
+        (click)="cerrarEdicion()">Cancelar</button><button type="button" class="btn-primary" [disabled]="savingEdit()"
+        (click)="guardarEdicion()">{{ savingEdit() ? 'Guardando…' : item.estado === 'BORRADOR' ? 'Guardar borrador' :
+        'Guardar cambios' }}</button></footer>
+  </section>
+</div>
+}
+
+@if (vistaPrevia(); as preview) {
+<app-nota-document-preview [data]="preview"
+  [pdfUrl]="can('Descargar') && preview.estado === 'OFICIALIZADA' && preview.notaId ? '/api/notas/' + preview.notaId + '/documento.pdf' : undefined"
+  (closed)="cerrarVistaPrevia()" />
+}
+
+<ion-modal class="officialization-modal" [isOpen]="!!notaPendienteOficializar()" [canDismiss]="!oficializando()"
+  (didDismiss)="cerrarOficializacion()" aria-labelledby="officialize-note-title" aria-describedby="officialize-note-description">
+  <ng-template>
+    @if (notaPendienteOficializar(); as item) {
+    <section class="officialization-card" [attr.aria-busy]="oficializando()">
+      <header class="delete-file-header">
+        <span class="delete-file-icon officialization-icon" aria-hidden="true"><ion-icon name="lock-closed-outline" /></span>
+        <div><span class="eyebrow">Última revisión</span><h2 id="officialize-note-title">Oficializar nota</h2></div>
+        <button type="button" class="icon-close" aria-label="Cerrar" [disabled]="oficializando()"
+          (click)="cerrarOficializacion()" title="Cerrar"><ion-icon name="close-outline" /></button>
+      </header>
+      <div class="delete-file-content">
+        <div class="delete-file-summary officialization-summary">
+          <span class="file-type-icon" aria-hidden="true"><ion-icon name="document-text-outline" /></span>
+          <div><strong>Nota {{ item.numero }}</strong><small>{{ item.asunto || 'Sin asunto' }}</small></div>
+          <span class="estado" [class]="estadoClase(item.estado)">{{ estadoLabel(item.estado) }}</span>
+        </div>
+        <div class="officialization-warning" id="officialize-note-description">
+          <strong>La nota quedará bloqueada para edición</strong>
+          <p>Una vez oficializada, no podrás modificar:</p>
+          <ul><li>La fecha de la nota.</li><li>Sus datos y contenido.</li></ul>
+        </div>
+        <p class="officialization-review">Revisa toda la información antes de continuar.</p>
+        <p class="officialization-trace"><ion-icon name="time-outline" aria-hidden="true" />
+          Esta acción quedará registrada en la trazabilidad.</p>
+        @if (errorOficializacion()) { <p class="reason-error" role="alert">{{ errorOficializacion() }}</p> }
+      </div>
+      <footer class="delete-file-actions">
+        <button type="button" class="btn-secondary" [disabled]="oficializando()" (click)="cerrarOficializacion()">Volver a revisar</button>
+        <button type="button" class="btn-success" [disabled]="oficializando()" (click)="confirmarOficializacion()">
+          <ion-icon name="checkmark-circle-outline" /> {{ oficializando() ? 'Oficializando…' : 'Oficializar nota' }}</button>
+      </footer>
+    </section>
+    }
+  </ng-template>
+</ion-modal>
+
+@if (notaPendienteAnular(); as item) {
+<div class="modal-backdrop delete-file-backdrop" role="presentation" tabindex="-1" (click)="cerrarAnulacion()"
+  (keydown.escape)="cerrarAnulacion()">
+  <section class="delete-file-modal annul-note-modal" role="dialog" aria-modal="true" aria-labelledby="annul-note-title"
+    aria-describedby="annul-note-description" (click)="$event.stopPropagation()">
+    <header class="delete-file-header">
+      <span class="delete-file-icon annul-note-icon" aria-hidden="true"><ion-icon name="ban-outline" /></span>
+      <div><span class="eyebrow">Nota {{ item.numero }}</span>
+        <h2 id="annul-note-title">Anular nota</h2>
+      </div>
+      <button type="button" class="icon-close" aria-label="Cerrar" [disabled]="anulando()"
+        (click)="cerrarAnulacion()" title="Cerrar"><ion-icon name="close-outline" /></button>
+    </header>
+
+    <div class="delete-file-content">
+      <div class="delete-file-summary annul-note-summary">
+        <span class="file-type-icon" aria-hidden="true"><ion-icon name="document-text-outline" /></span>
+        <div><strong>{{ item.asunto }}</strong><small>Responsable: {{ item.seguimientoUsuario.nombre }}</small></div>
+        <span class="estado" [class]="estadoClase(item.estado)">{{ estadoLabel(item.estado) }}</span>
+      </div>
+
+      <p id="annul-note-description" class="delete-file-warning"><strong>La nota dejará de estar activa, pero no será
+          eliminada.</strong> </p>
+
+      <label class="delete-reason-label" for="annul-note-reason">Motivo de la anulación <span
+          aria-hidden="true">*</span></label>
+      <textarea id="annul-note-reason" class="delete-reason" rows="4" minlength="5" maxlength="1000" autofocus
+        [ngModel]="motivoAnulacion()" (ngModelChange)="motivoAnulacion.set($event)"
+        [class.invalid]="anulacionIntentada() && motivoAnulacion().trim().length < 5"
+        placeholder="Ejemplo: la nota fue registrada con información incorrecta"></textarea>
+      <div class="delete-reason-meta">
+        @if (anulacionIntentada() && motivoAnulacion().trim().length < 5) { <span class="reason-error" role="alert">
+          Escribe al menos 5 caracteres.</span> } @else { <span>Campo obligatorio · mínimo 5 caracteres</span> }
+          <span>{{ motivoAnulacion().length }}/1000</span>
+      </div>
+    </div>
+
+    <footer class="delete-file-actions">
+      <button type="button" class="btn-secondary" [disabled]="anulando()" (click)="cerrarAnulacion()">Cancelar</button>
+      <button type="button" class="btn-danger delete-confirm-button"
+        [disabled]="anulando() || motivoAnulacion().trim().length < 5" (click)="confirmarAnulacion()"><ion-icon
+          name="ban-outline" /> {{ anulando() ? 'Anulando…' : 'Anular nota' }}</button>
+    </footer>
+  </section>
+</div>
+}
+
+@if (pdfPendienteEliminar(); as pdf) {
+<div class="modal-backdrop delete-file-backdrop" role="presentation" tabindex="-1" (click)="cerrarEliminacionPdf()"
+  (keydown.escape)="cerrarEliminacionPdf()">
+  <section class="delete-file-modal" role="dialog" aria-modal="true" aria-labelledby="delete-pdf-title"
+    aria-describedby="delete-pdf-description" (click)="$event.stopPropagation()">
+    <header class="delete-file-header">
+      <span class="delete-file-icon" aria-hidden="true"><ion-icon name="trash-outline" /></span>
+      <div><span class="eyebrow">Documento de la nota</span>
+        <h2 id="delete-pdf-title">Eliminar archivo PDF</h2>
+      </div>
+      <button type="button" class="icon-close" aria-label="Cerrar" [disabled]="!!deletingPdfId()"
+        (click)="cerrarEliminacionPdf()" title="Cerrar"><ion-icon name="close-outline" /></button>
+    </header>
+
+    <div class="delete-file-content">
+      <div class="delete-file-summary">
+        <span class="file-type-icon" aria-hidden="true"><ion-icon name="document-text-outline" /></span>
+        <div><strong>{{ pdf.nombreOriginal }}</strong><small>{{ formatBytes(pdf.tamanoBytes) }} · Cargado por {{
+            pdf.usuario?.nombre || 'Sistema' }}</small></div>
+        <span class="version-pill">v{{ pdf.numeroVersion }}</span>
+      </div>
+
+      <p id="delete-pdf-description" class="delete-file-warning"><strong>Esta acción retirará el archivo de la
+          nota.</strong></p>
+
+      <label class="delete-reason-label" for="delete-pdf-reason">Motivo de la eliminación <span
+          aria-hidden="true">*</span></label>
+      <textarea id="delete-pdf-reason" class="delete-reason" rows="4" minlength="5" maxlength="1000" autofocus
+        [ngModel]="motivoEliminacionPdf()" (ngModelChange)="motivoEliminacionPdf.set($event)"
+        [class.invalid]="eliminacionPdfIntentada() && motivoEliminacionPdf().trim().length < 5"
+        placeholder="Ejemplo: el documento se cargó por error"></textarea>
+      <div class="delete-reason-meta">
+        @if (eliminacionPdfIntentada() && motivoEliminacionPdf().trim().length < 5) { <span class="reason-error"
+          role="alert">Escribe al menos 5 caracteres.</span> } @else { <span>Campo obligatorio · mínimo 5
+            caracteres</span> }
+          <span>{{ motivoEliminacionPdf().length }}/1000</span>
+      </div>
+    </div>
+
+    <footer class="delete-file-actions">
+      <button type="button" class="btn-secondary" [disabled]="!!deletingPdfId()"
+        (click)="cerrarEliminacionPdf()">Cancelar</button>
+      <button type="button" class="btn-danger delete-confirm-button"
+        [disabled]="!!deletingPdfId() || motivoEliminacionPdf().trim().length < 5"
+        (click)="confirmarEliminacionPdf()"><ion-icon name="trash-outline" /> {{ deletingPdfId() ? 'Eliminando…' :
+        'Eliminar archivo' }}</button>
+    </footer>
+  </section>
+</div>
+}

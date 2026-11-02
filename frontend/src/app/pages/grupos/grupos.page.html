@@ -1,0 +1,142 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+  <main class="dashboard-main grupos-content">
+    <div class="page-header">
+      <div>
+        <div class="breadcrumb">Inicio › Unidades</div>
+        <h1>{{ isMiembro() ? 'Mis unidades' : 'Unidades' }}</h1>
+        <p>{{ isMiembro() ? 'Consulta las unidades de las que formas parte.' : 'Administra las unidades de trabajo.' }}
+        </p>
+      </div>
+      @if (can('Crear')) {<button class="btn-primary" (click)="openNew(); loadUsuarios()"><ion-icon
+          name="add-outline" /> Nueva Unidad</button>}
+    </div>
+
+    <section class="stats" [class.member-stats]="isMiembro()">
+      <article><ion-icon name="people-outline" /><b>{{ stats().total }}</b><span>{{ isMiembro() ? 'Mis unidades' :
+          'Total de unidades' }}</span><small>{{ isMiembro() ? 'Unidades asignadas a ti' : 'Unidades dentro de tu
+          alcance' }}</small></article>
+      <article><ion-icon name="checkmark-circle-outline" /><b>{{ stats().activos }}</b><span>Unidades
+          activas</span><small>Unidades en funcionamiento</small></article>
+      @if (!isMiembro()) {<article><ion-icon name="person-add-outline" /><b>{{ stats().miembros }}</b><span>Miembros
+          totales</span><small>Usuarios asignados</small></article>}
+      <article><ion-icon name="close-circle-outline" /><b>{{ stats().inactivos }}</b><span>Unidades
+          inactivas</span><small>Unidades deshabilitadas</small></article>
+    </section>
+
+    <section class="filters">
+      <div><ion-icon name="search-outline" /><input placeholder="Buscar unidad..." [ngModel]="search()"
+          (ngModelChange)="search.set($event)" /></div>
+      <select [ngModel]="estado()" (ngModelChange)="estado.set($event)">
+        <option value="todos">Todos los estados</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+      </select>
+      @if (isAdmin()) {<select [ngModel]="unidadId()" (ngModelChange)="unidadId.set($event)">
+        <option value="">Todas las unidades</option>@for (u of unidades(); track u.id) {<option [value]="u.id">{{
+          u.nombre }}</option>}
+      </select>}
+    </section>
+
+    @if (loading()) {<div class="state">Cargando unidades…</div>} @else {
+    <section class="content">
+      <div class="grid">
+        @for (g of filtered(); track g.id) {
+        <button class="group-card" [class.selected]="selected()?.id === g.id" (click)="openDetail(g)"
+          [attr.aria-label]="'Ver detalle de ' + g.nombre">
+          <div class="group-icon" [style.background]="g.color || '#eaf1ff'"><ion-icon
+              [name]="g.icono || 'people-outline'" /></div>
+          <div>
+            <h2>{{ g.nombre }}</h2>
+            <p><ion-icon name="business-outline" /> {{ g.unidadNombre }}</p><small><ion-icon name="people-outline" /> {{
+              g.miembros }} miembro(s)</small>
+          </div>
+          <span [class.off]="!g.activo">{{ g.activo ? 'Activo' : 'Inactivo' }}</span>
+        </button>
+        } @empty {<div class="state">No hay unidades que coincidan con los filtros.</div>}
+      </div>
+
+      @if (selected(); as g) {
+      <aside>
+        <div class="detail-icon"><ion-icon name="people-outline" /></div>
+        <h2>{{ g.nombre }}</h2><span class="status" [class.off]="!g.activo">{{ g.activo ? 'Activo' : 'Inactivo'
+          }}</span>
+        <p>{{ g.descripcion || 'Sin descripción registrada.' }}</p>
+        <dl>
+          <dt>Unidad</dt>
+          <dd>{{ g.unidadNombre }}</dd>
+          <dt>Responsable</dt>
+          <dd>{{ g.responsableNombre || 'Jefe de Unidad' }}</dd>
+          <dt>Tipo de unidad</dt>
+          <dd>{{ g.tipo }}</dd>
+          <dt>Miembros</dt>
+          <dd>{{ g.miembros }}</dd>
+        </dl>
+        <div class="actions">
+          <button (click)="verMiembros(g)"><ion-icon name="people-outline" /> Ver miembros</button>
+          @if (can('Ver actividades')) {<button (click)="verActividades(g)"><ion-icon name="list-outline" /> Ver
+            actividades</button>}
+          @if (can('Editar')) {<button (click)="openEdit(g); loadUsuarios()"><ion-icon name="create-outline" /> Editar y
+            miembros</button>}
+          @if (can('Cambiar estado')) {<button (click)="toggle(g)"><ion-icon name="power-outline" /> {{ g.activo ?
+            'Desactivar' : 'Activar' }}</button>}
+          @if (can('Eliminar')) {<button class="danger" (click)="remove(g)"><ion-icon name="trash-outline" />
+            Eliminar</button>}
+          @if (isAdmin() || isJefe()) {<button (click)="exportar(g)"><ion-icon name="download-outline" />
+            Exportar</button>}
+        </div>
+        @if (detalleActivo() === 'miembros') {<section class="detail-list">
+          <h3>Miembros</h3>@for (m of miembrosDetalle(); track m.id) {<p><b>{{ m.nombre }}</b>@if (m.responsable)
+            {<span>Responsable</span>}<small>{{ m.correo }}</small></p>} @empty {<small>Sin miembros
+            registrados.</small>}
+        </section>}
+        @if (detalleActivo() === 'actividades') {<section class="detail-list">
+          <h3>Actividades</h3>@for (a of actividadesDetalle(); track a.id) {<p><b>{{ a.accion }}</b><small>{{ a.detalle
+              }} · {{ a.fecha | date:'short' }}</small></p>} @empty {<small>Sin actividades registradas.</small>}
+        </section>}
+      </aside>
+      }
+    </section>
+    }
+  </main>
+</div>
+
+<ion-modal class="form-modal" [isOpen]="modal()" (didDismiss)="modal.set(false)">
+  <ng-template>
+    <ion-header><ion-toolbar color="primary"><ion-title>{{ selected() ? 'Editar Unidad' : 'Nueva Unidad'
+          }}</ion-title><ion-buttons slot="end"><ion-button aria-label="Cerrar formulario de unidad"
+            (click)="modal.set(false)" title="Cerrar formulario de unidad"><ion-icon name="close-outline"
+              aria-hidden="true" /></ion-button></ion-buttons></ion-toolbar></ion-header>
+    <div class="modal-body">
+      <label>Nombre *<input [(ngModel)]="form.nombre" placeholder="Ej. Comité de Tecnología" /></label>
+      <label>Unidad *<select [(ngModel)]="form.unidadId">
+          <option value="">Seleccione una unidad</option>@for (u of unidades(); track u.id) {<option [value]="u.id">{{
+            u.nombre }}</option>}
+        </select>@if (!unidades().length) {<small class="field-help">No hay unidades activas disponibles para tu
+          cuenta.</small>}</label>
+      <label>Tipo de unidad *<input [(ngModel)]="form.tipo" placeholder="Ej. Comité" /></label>
+      <label>Descripción<textarea [(ngModel)]="form.descripcion"
+          placeholder="Propósito de la unidad"></textarea></label>
+      <section class="members-field">
+        <h3><ion-icon name="person-add-outline" /> Miembros</h3>
+        <p>Seleccione los usuarios adicionales de la unidad.</p>
+        <div class="unit-head-note"><ion-icon name="shield-checkmark-outline" /> El responsable se asigna
+          automáticamente al Jefe de Unidad y se agrega como miembro al guardar.</div><select #memberSelect
+          (change)="agregarMiembro(memberSelect.value); memberSelect.value=''" [disabled]="!usuarios().length">
+          <option value="">Agregar miembro…</option>@for (u of usuarios(); track u.id) {<option [value]="u.id"
+            [disabled]="miembroIds().includes(u.id)">{{ u.nombre }} {{ u.apellido || '' }} · {{ u.correo }}</option>}
+        </select>@if (miembroIds().length) {<div class="member-chips">@for (id of miembroIds(); track id) {<div
+            class="member-chip"><span>{{ nombreMiembro(id) }}</span><button type="button" (click)="quitarMiembro(id)"
+              aria-label="Quitar miembro" title="Quitar miembro"><ion-icon name="close-outline" /></button></div>}</div>
+        } @else {<small class="member-empty">Aún no hay miembros adicionales asignados.</small>}
+      </section>
+      <label class="toggle"><input type="checkbox" [(ngModel)]="form.activo" /> Unidad activa</label>
+      <div class="modal-actions"><button class="btn-cancel" (click)="modal.set(false)">Cancelar</button><button
+          class="btn-primary" [disabled]="saving() || !form.nombre.trim() || !form.unidadId"
+          (click)="saveWithMembers()">{{ saving() ? 'Guardando…' : 'Guardar unidad' }}</button></div>
+    </div>
+  </ng-template>
+</ion-modal>

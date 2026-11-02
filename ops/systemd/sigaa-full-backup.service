@@ -1,0 +1,17 @@
+[Unit]
+Description=SIGAA coherent encrypted database and attachments backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# Cambiar por el montaje real antes de instalar la unidad.
+RequiresMountsFor=/mnt/respaldo-institucional/sigaa
+OnFailure=sigaa-operation-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/sigaa
+Environment=SIGAA_COMPOSE_PROJECT=sigaa
+Environment=SIGAA_ENV_FILE=/srv/sigaa/.env
+ExecStart=/usr/bin/bash /srv/sigaa/ops/scripts/full-backup.sh
+TimeoutStartSec=45min
+UMask=0077

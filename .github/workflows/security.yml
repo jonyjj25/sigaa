@@ -1,0 +1,82 @@
+name: Seguridad
+
+on:
+  pull_request:
+  push:
+    branches: [keicy, main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-review:
+    name: Revisar dependencias del PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar Java para CodeQL
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/sigaa-api/pom.xml
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      - name: Compilar backend para CodeQL
+        if: matrix.language == 'java-kotlin'
+        working-directory: backend/sigaa-api
+        run: bash ./mvnw --batch-mode -DskipTests package
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+
+  dependency-audit:
+    name: Auditar dependencias instaladas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: NPM audit de producción (altas o críticas)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+      - name: NPM audit completo (críticas)
+        working-directory: frontend
+        run: npm audit --audit-level=critical
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Verificar dependencias Maven conocidas
+        working-directory: backend/sigaa-api
+        run: bash ./mvnw --batch-mode org.owasp:dependency-check-maven:12.1.8:check -DfailBuildOnCVSS=8

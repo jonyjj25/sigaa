@@ -1,0 +1,371 @@
+<app-dashboard-sidebar
+  [items]="menuItems()"
+  [collapsed]="authService.sidebarCollapsed()"
+  (logout)="onLogout()"
+/>
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar
+    [userName]="user()?.nombre || 'Usuario'"
+    [userRole]="user()?.roles || ''"
+    [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()"
+    (logout)="onLogout()"
+  />
+
+  <main class="dashboard-main">
+    <div class="qr-content">
+
+      <div class="page-header">
+        <div><span class="page-eyebrow">Registro de asistencia</span><h1 class="page-title">Configuración QR</h1><p class="page-desc">Crea sesiones y comparte códigos para registrar la asistencia en tiempo real.</p></div>
+        @if (selectedSesion()) {
+          <span class="session-status" [class.closed]="!selectedSesion()!.activo && !selectedSesion()!.archivado" [class.archived]="selectedSesion()!.archivado">
+            <ion-icon [name]="selectedSesion()!.archivado ? 'archive-outline' : selectedSesion()!.activo ? 'radio-outline' : 'close-circle-outline'" />
+            {{ selectedSesion()!.archivado ? 'Sesión archivada' : selectedSesion()!.activo ? 'Sesión activa' : 'Sesión cerrada' }}
+          </span>
+        }
+      </div>
+
+      <div class="qr-grid-top">
+        <!-- QR CARD -->
+        <div class="card qr-card">
+          <div class="qr-card-header">
+            <h3 class="card-title">Código QR</h3>
+            @if (canCreateSession()) {
+              <button type="button" class="btn-add-sesion" (click)="crearSesion()">
+                <ion-icon name="add-outline" /> Nueva sesión
+              </button>
+            }
+          </div>
+
+          @if (loadError()) {
+            <div class="qr-message qr-message-error" role="alert">
+              <span>{{ loadError() }}</span>
+              <button type="button" (click)="cargarSesiones()">Reintentar</button>
+            </div>
+          } @else if (sesionesLoading()) {
+            <div class="qr-message" role="status">Cargando sesiones QR...</div>
+          }
+
+          @if (actionError()) {
+            <div class="qr-message qr-message-error" role="alert">{{ actionError() }}</div>
+          }
+
+          @if (sesiones().length > 0) {
+            <div class="sesion-tabs">
+              @for (s of sesiones(); track s.id) {
+                <div class="sesion-tab" [class.active]="selectedSesion()?.id === s.id" [class.inactive]="!s.activo">
+                  <button type="button" class="sesion-select" [attr.aria-pressed]="selectedSesion()?.id === s.id" [attr.aria-label]="'Seleccionar sesión ' + s.nombre" (click)="selectSesion(s)">
+                    <span class="sesion-tab-name">{{ s.nombre }}</span>
+                    <span class="sesion-tab-code">{{ s.codigo }}</span>
+                    @if (!s.activo) { <span class="sesion-tab-state">Cerrada</span> }
+                  </button>
+                  @if (canDeleteSession()) {
+                    <button type="button" class="sesion-delete" [attr.aria-label]="'Eliminar sesión ' + s.nombre" (click)="eliminarSesion(s)" [title]="'Eliminar sesión ' + s.nombre">
+                      <ion-icon name="trash-outline" aria-hidden="true" />
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <div class="qr-wrapper">
+            @if (selectedSesion()?.archivado) {
+              <div class="qr-closed qr-archived" role="status">
+                <ion-icon name="archive-outline" aria-hidden="true" />
+                <strong>Sesión archivada</strong>
+                <span>El QR está desactivado. Los asistentes y las actas vinculadas se conservan para consulta.</span>
+                @if (puedeRestaurar(selectedSesion())) {
+                  <button type="button" class="btn-secondary-action" (click)="restaurarSesion(selectedSesion())">
+                    <ion-icon name="arrow-undo-outline" /> Restaurar sesión
+                  </button>
+                }
+              </div>
+            } @else if (selectedSesion() && !selectedSesion()!.activo) {
+              <div class="qr-closed" role="status">
+                <ion-icon name="close-circle-outline" aria-hidden="true" />
+                <strong>Sesión cerrada</strong>
+                <span>El código QR está desactivado. La asistencia registrada se conserva para consulta.</span>
+                @if (canArchiveSession()) {
+                  <button type="button" class="btn-secondary-action" (click)="archivarSesion(selectedSesion())">
+                    <ion-icon name="archive-outline" /> Archivar sesión
+                  </button>
+                }
+              </div>
+            } @else if (qrUrl()) {
+              <div class="qr-code"><qrcode [qrdata]="qrUrl()" [width]="200" [errorCorrectionLevel]="'M'" /></div>
+              <div class="qr-actions">
+                <button type="button" (click)="copyQrUrl()"><ion-icon name="copy-outline" />Copiar enlace</button>
+                <button type="button" (click)="downloadQr()"><ion-icon name="download-outline" />Descargar</button>
+                <button type="button" (click)="printQr()"><ion-icon name="print-outline" />Imprimir</button>
+                @if (canCloseSession()) {
+                  <button type="button" class="btn-close-session" (click)="cerrarSesion(selectedSesion())"><ion-icon name="close-circle-outline" />Cerrar sesión</button>
+                }
+                @if (canArchiveSession()) {
+                  <button type="button" class="btn-archive-session" (click)="archivarSesion(selectedSesion())"><ion-icon name="archive-outline" />Archivar</button>
+                }
+              </div>
+              <div class="qr-sesion-info">
+                <strong>{{ selectedSesion()!.nombre }}</strong>
+                <span>{{ selectedSesion()!.fecha }} &middot; {{ selectedSesion()!.tipo }}</span>
+              </div>
+            } @else {
+              <div class="qr-empty">
+                <ion-icon name="qr-code-outline" class="qr-empty-icon" />
+                @if (!sesionesLoading() && !loadError()) {
+                  <p>No hay sesiones QR disponibles.</p>
+                  @if (canCreateSession()) { <span>Crea una sesión para generar el código.</span> }
+                }
+              </div>
+            }
+          </div>
+
+          <div class="qr-hint"><strong>Cómo funciona</strong><span>1. Escanea el QR · 2. Completa el formulario · 3. Confirma tu asistencia</span></div>
+        </div>
+
+        <!-- ASISTENTES EN VIVO -->
+        <div class="card asistentes-card">
+          <div class="asistentes-header">
+            <h3 class="card-title">
+              <ion-icon name="people-outline" /> Asistentes en Vivo
+            </h3>
+            <div class="asistentes-badge">
+              <span class="asistentes-count">{{ totalAsistentes() }}</span>
+              <span class="asistentes-label">registrados</span>
+            </div>
+          </div>
+
+          @if (selectedSesion()) {
+            <div class="asistentes-sesion-info">
+              <span>{{ selectedSesion()!.nombre }} · {{ selectedSesion()!.codigo }}</span><small>Actualizado {{ formatLastUpdated() }} · cada 30 segundos</small>
+            </div>
+
+            @if (asistentesLoading()) {
+              <div class="asistentes-loading">Cargando...</div>
+            } @else {
+              @if (asistentes().registrados?.length > 0 || asistentes().invitados?.length > 0) {
+                <label class="attendee-search"><ion-icon name="search-outline" /><input type="search" placeholder="Buscar asistente..." [value]="asistenteSearch()" (input)="asistenteSearch.set($any($event.target).value)" /></label>
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Hora</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of visibleRegistrados(); track r.id) {
+                        <tr>
+                          <td class="cell-name">{{ attendeeName(r) }}</td>
+                          <td><span class="badge badge-registrado">Registrado</span></td>
+                          <td>{{ r.horaEntrada }}</td>
+                          <td>
+                            <span class="badge badge-presente">
+                              @if (r.horaSalida) { Salido }
+                              @else { Presente }
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                      @for (inv of visibleInvitados(); track inv.id) {
+                        <tr>
+                          <td class="cell-name">{{ inv.nombre }}</td>
+                          <td><span class="badge badge-invitado">Invitado</span></td>
+                          <td>{{ inv.horaRegistro }}</td>
+                          <td><span class="badge badge-presente">Presente</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="asistentes-empty">
+                  <ion-icon name="people-outline" class="asistentes-empty-icon" />
+                  <p>Esperando asistentes por escanear...</p>
+                </div>
+              }
+            }
+          } @else {
+            <div class="asistentes-empty">
+              <p>Selecciona una sesión para ver asistentes en vivo</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <section class="card archive-card" aria-labelledby="archivo-qr-title">
+        <button
+          type="button"
+          class="archive-toggle"
+          [attr.aria-expanded]="archivoExpandido()"
+          aria-controls="archivo-qr-list"
+          (click)="archivoExpandido.set(!archivoExpandido())">
+          <span class="archive-title-wrap">
+            <span class="archive-icon"><ion-icon name="folder-open-outline" /></span>
+            <span>
+              <strong id="archivo-qr-title">Sesiones archivadas</strong>
+              <small>Historial de códigos QR organizado por mes</small>
+            </span>
+          </span>
+          <span class="archive-toggle-meta">
+            <span class="archive-count">{{ sesionesArchivadas().length }}</span>
+            <ion-icon name="chevron-down-outline" [class.expanded]="archivoExpandido()" />
+          </span>
+        </button>
+
+        @if (archivoExpandido()) {
+          <div id="archivo-qr-list" class="archive-content">
+            @for (grupo of sesionesArchivadasPorMes(); track grupo.mes) {
+              <section class="archive-month-group">
+                <button
+                  type="button"
+                  class="archive-month-toggle"
+                  [attr.aria-expanded]="archivoMesExpandido() === grupo.mes"
+                  [attr.aria-controls]="'archivo-mes-' + grupo.mes"
+                  (click)="toggleMesArchivo(grupo.mes)">
+                  <span class="archive-month-label">
+                    <ion-icon name="calendar-outline" />
+                    <strong>{{ grupo.etiqueta }}</strong>
+                  </span>
+                  <span class="archive-month-toggle-meta">
+                    <span>{{ grupo.sesiones.length }} {{ grupo.sesiones.length === 1 ? 'sesión' : 'sesiones' }}</span>
+                    <ion-icon name="chevron-down-outline" [class.expanded]="archivoMesExpandido() === grupo.mes" />
+                  </span>
+                </button>
+
+                @if (archivoMesExpandido() === grupo.mes) {
+                  <div class="archive-month-list" [id]="'archivo-mes-' + grupo.mes">
+                    @for (s of grupo.sesiones; track s.id) {
+                      <article class="archive-item" [class.selected]="selectedSesion()?.id === s.id">
+                        <div class="archive-item-main">
+                          <strong>{{ s.nombre }}</strong>
+                          <span>{{ s.fecha }} · {{ s.codigo }} · {{ s.tipo }}</span>
+                          <small>{{ esSesionAntigua(s) ? 'Archivada automáticamente por antigüedad' : 'Archivada manualmente' }}</small>
+                        </div>
+                        <div class="archive-stats" aria-label="Resumen de la sesión">
+                          <span><strong>{{ (s.totalAsistencias || 0) + (s.totalInvitados || 0) }}</strong> asistentes</span>
+                          <span><strong>{{ s.totalActas || 0 }}</strong> actas</span>
+                        </div>
+                        <div class="archive-actions">
+                          <button type="button" (click)="verSesionArchivada(s)"><ion-icon name="eye-outline" /> Consultar</button>
+                          @if (puedeRestaurar(s)) {
+                            <button type="button" (click)="restaurarSesion(s)"><ion-icon name="arrow-undo-outline" /> Restaurar</button>
+                          }
+                        </div>
+                      </article>
+                    }
+                  </div>
+                }
+              </section>
+            } @empty {
+              <div class="archive-empty">
+                <ion-icon name="archive-outline" />
+                <p>No hay sesiones QR archivadas.</p>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      @if (false) { <!-- Historial oculto por solicitud -->
+      <div class="card historial-card">
+        <h3 class="card-title">Mi Historial de Asistencia</h3>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Sede</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of historial(); track r.id) {
+                <tr>
+                  <td>{{ r.fecha }}</td>
+                  <td>{{ r.horaEntrada }}</td>
+                  <td>{{ r.horaSalida || '—' }}</td>
+                  <td>{{ r.sede?.nombre || '—' }}</td>
+                  <td>
+                    <span class="estado-badge" [class]="r.estado">
+                      @if (r.estado === 'presente') { Presente }
+                      @else if (r.estado === 'tardanza') { Tardanza }
+                      @else { {{ r.estado }} }
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">Sin registros de asistencia</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div> }
+
+    </div>
+  </main>
+</div>
+
+<ion-modal class="session-create-modal" [isOpen]="mostrarNuevaSesion()" [canDismiss]="puedeCerrarNuevaSesion"
+  (didDismiss)="cerrarNuevaSesion()" aria-labelledby="session-create-title" aria-describedby="session-create-description">
+  <ng-template>
+    <form class="session-create-panel" #sesionForm="ngForm" (ngSubmit)="guardarNuevaSesion()"
+      [attr.aria-busy]="creandoSesion()" autocomplete="off">
+      <header class="session-create-header">
+        <span class="session-create-icon" aria-hidden="true"><ion-icon name="qr-code-outline" /></span>
+        <div class="session-create-heading">
+          <span class="session-create-eyebrow">Configuración QR</span>
+          <h2 id="session-create-title">Nueva sesión</h2>
+        </div>
+        <button type="button" class="session-create-close" aria-label="Cerrar formulario"
+          [disabled]="creandoSesion()" (click)="cerrarNuevaSesion()" title="Cerrar formulario"><ion-icon name="close-outline" aria-hidden="true" /></button>
+      </header>
+
+      <div class="session-create-body">
+        <p id="session-create-description" class="session-create-description">Define el evento y su fecha para registrar la asistencia.</p>
+
+        <div class="session-create-field">
+          <label for="session-create-name">Nombre del evento <span aria-hidden="true">*</span></label>
+          <input id="session-create-name" name="nombre" type="text" required
+            placeholder="Ej. Reunión de coordinación" autocomplete="off"
+            [ngModel]="nombreNuevaSesion()" (ngModelChange)="nombreNuevaSesion.set($event)"
+            [disabled]="creandoSesion()" />
+        </div>
+        <div class="session-create-field">
+          <label for="session-create-date">Fecha de la sesión <span aria-hidden="true">*</span></label>
+          <input id="session-create-date" name="fecha" type="date" required
+            [ngModel]="fechaNuevaSesion()" (ngModelChange)="fechaNuevaSesion.set($event)"
+            [disabled]="creandoSesion()" />
+        </div>
+
+        <p class="session-create-info"><ion-icon name="qr-code-outline" aria-hidden="true" />
+          <span>Se generará un código QR para que los asistentes registren su participación.</span>
+        </p>
+        @if (errorNuevaSesion()) {
+          <p class="session-create-error" role="alert"><ion-icon name="close-circle-outline" aria-hidden="true" />
+            <span>{{ errorNuevaSesion() }}</span>
+          </p>
+        }
+      </div>
+
+      <footer class="session-create-actions">
+        <button type="button" class="session-create-cancel" [disabled]="creandoSesion()" (click)="cerrarNuevaSesion()">Cancelar</button>
+        <button type="submit" class="session-create-submit"
+          [disabled]="creandoSesion() || !canCreateSession() || sesionForm.invalid || !nombreNuevaSesion().trim()">
+          @if (creandoSesion()) {
+            <ion-spinner name="crescent" aria-hidden="true" /> <span>Creando…</span>
+          } @else {
+            <ion-icon name="add-outline" aria-hidden="true" /> <span>Crear sesión</span>
+          }
+        </button>
+      </footer>
+    </form>
+  </ng-template>
+</ion-modal>

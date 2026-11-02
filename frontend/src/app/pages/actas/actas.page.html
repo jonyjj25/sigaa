@@ -1,0 +1,595 @@
+<app-dashboard-sidebar
+  [items]="menuItems()"
+  [collapsed]="authService.sidebarCollapsed()"
+  (logout)="onLogout()"
+/>
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar
+    [notifications]="notifications()"
+    [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''"
+    [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()"
+    (logout)="onLogout()"
+  />
+
+  <main class="dashboard-main">
+    <div class="actas-content">
+
+      <!-- HEADER -->
+      @if (detailMode()) {
+        <div class="detail-page-nav">
+          <button type="button" class="btn-back-list" (click)="volverALista()">
+            <ion-icon name="chevron-back-outline" /> Volver a la lista de actas
+          </button>
+          <span>Detalle de acta</span>
+        </div>
+      } @else {
+      <div class="page-header">
+        <div class="header-row">
+          <div class="page-heading">
+            <div class="page-heading-icon" aria-hidden="true">
+              <ion-icon name="document-text-outline" />
+            </div>
+            <div>
+              <span class="page-eyebrow">GESTIÓN INSTITUCIONAL</span>
+              <h1 class="page-title">Actas</h1>
+              <p class="page-desc">Gestión y consulta de actas de reuniones y sesiones institucionales</p>
+            </div>
+          </div>
+        </div>
+        <div class="summary-strip" aria-label="Resumen de actas">
+          <div class="summary-item summary-total"><span class="summary-dot"></span><strong>{{ actas().length }}</strong><span>Total</span></div>
+          <div class="summary-item summary-success"><span class="summary-dot"></span><strong>{{ totalFirmadas() }}</strong><span>Finalizadas</span></div>
+          <div class="summary-item summary-warning"><span class="summary-dot"></span><strong>{{ totalPendientes() }}</strong><span>Pendientes de firma</span></div>
+          <div class="summary-item summary-draft"><span class="summary-dot"></span><strong>{{ totalBorradores() }}</strong><span>Borradores</span></div>
+        </div>
+      </div>
+      }
+
+      <div class="actas-grid" [class.list-only]="!detailMode()" [class.detail-page-layout]="detailMode()">
+
+        @if (!detailMode()) {
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Lista de Actas</h3>
+            <div class="card-header-actions">
+              <span class="card-badge">{{ actas().length }} registros</span>
+
+            </div>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="filtros-row">
+            <div class="filtro-search-wrapper">
+              <ion-icon name="search-outline" class="search-icon" />
+              <input
+                type="text"
+                class="filtro-input"
+                placeholder="Buscar por título o código..."
+                [value]="filtroSearch()"
+                (input)="filtroSearch.set($any($event.target).value); currentPage.set(1); sincronizarSeleccionConFiltros()"
+                aria-label="Buscar actas"
+              />
+            </div>
+            <select class="filtro-select" aria-label="Filtrar por tipo" [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value); currentPage.set(1); sincronizarSeleccionConFiltros()">
+              <option value="Todos">Todos los tipos</option>
+              <option value="Ordinaria">Ordinaria</option>
+              <option value="Extraordinaria">Extraordinaria</option>
+              <option value="Comité">Comité</option>
+              <option value="Consejo">Consejo</option>
+            </select>
+            <select class="filtro-select" aria-label="Filtrar por estado" [value]="filtroEstado()" (change)="filtroEstado.set($any($event.target).value); currentPage.set(1); sincronizarSeleccionConFiltros()">
+              <option value="Todos">Todos los estados</option>
+              <option value="Firmada">Firmada</option>
+              <option value="Pendiente Firma">Pendiente Firma</option>
+              <option value="Borrador">Borrador</option>
+              <option value="Terminada">Terminada</option>
+            </select>
+            <input
+              type="date"
+              class="filtro-date"
+              [value]="filtroFecha()"
+              (change)="filtroFecha.set($any($event.target).value); currentPage.set(1); sincronizarSeleccionConFiltros()"
+              aria-label="Filtrar por fecha"
+            />
+            <button class="btn-filtros" (click)="limpiarFiltros()">
+              <ion-icon name="filter-outline" />
+              Limpiar
+            </button>
+          </div>
+
+          <!-- TABLA -->
+          @if (loading()) {
+            <div class="loading-skeleton" aria-label="Cargando actas" role="status">
+              @for (line of [1, 2, 3, 4, 5, 6]; track line) { <span class="loading-skeleton__line"></span> }
+            </div>
+          } @else if (loadError()) {
+            <div class="content-feedback" role="alert">
+              <h3>No pudimos cargar las actas</h3>
+              <p>Verifica tu conexión e intenta nuevamente.</p>
+              <button class="btn-primary" type="button" (click)="retryLoad()">Reintentar</button>
+            </div>
+          } @else {
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Reunión / Tema</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (acta of paginatedActas(); track acta.id) {
+                  <tr
+                    class="acta-row"
+                    (click)="verActa(acta)"
+                  >
+                    <td class="cell-codigo" data-label="N°">{{ acta.codigo }}</td>
+                    <td class="cell-fecha" data-label="Fecha">{{ acta.fecha }}</td>
+                    <td data-label="Tipo"><span class="tipo-badge">{{ acta.tipo }}</span></td>
+                    <td class="cell-titulo" data-label="Reunión / Tema">{{ acta.titulo }}</td>
+                    <td data-label="Estado">
+                      <span class="estado-badge" [class]="getEstadoClass(acta.estado)">
+                        {{ acta.estado }}
+                      </span>
+                    </td>
+                    <td class="cell-acciones" data-label="Acciones" (click)="$event.stopPropagation()">
+                      <button class="btn-icon" type="button" title="Ver detalles" [attr.aria-label]="'Ver detalles de ' + acta.codigo" (click)="verActa(acta)">
+                        <ion-icon name="eye-outline" />
+                      </button>
+                      <button class="btn-icon" type="button" title="Descargar PDF" [attr.aria-label]="'Descargar ' + acta.codigo" [disabled]="!can('Descargar')" (click)="descargarActa(acta)">
+                        <ion-icon name="download-outline" />
+                      </button>
+                    <button type="button" class="context-menu-wrapper" title="Más acciones" aria-label="Más acciones del acta"
+                        [attr.aria-expanded]="openMenuId() === acta.id" (click)="toggleMenu(acta.id, $event)">
+                        <ion-icon name="ellipsis-vertical-outline" class="context-trigger" />
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="empty-cell">No se encontraron actas con los filtros seleccionados</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          }
+
+          <!-- PAGINACIÓN -->
+          @if (!loading() && !loadError() && actasFiltradas().length > 0) { <div class="pagination">
+            <span class="page-info">
+              Mostrando {{ (currentPage() - 1) * pageSize + 1 }}-{{ Math.min(currentPage() * pageSize, actasFiltradas().length) }} de {{ actasFiltradas().length }}
+            </span>
+            <div class="page-btns">
+              <button class="page-btn" type="button" aria-label="Página anterior" [disabled]="currentPage() === 1" (click)="currentPage.set(currentPage() - 1)" title="Página anterior">
+                <ion-icon name="chevron-back-outline" />
+              </button>
+              @for (p of totalPages(); track p) {
+                <button class="page-btn" [class.active]="currentPage() === p" (click)="currentPage.set(p)">{{ p }}</button>
+              }
+              <button class="page-btn" type="button" aria-label="Página siguiente" [disabled]="currentPage() === totalPages().length" (click)="currentPage.set(currentPage() + 1)" title="Página siguiente">
+                <ion-icon name="chevron-forward-outline" />
+              </button>
+            </div>
+          </div> }
+
+          @if (openMenuId() && menuPos(); as pos) {
+            <div class="menu-backdrop" (click)="closeMenu()"></div>
+            <div class="context-menu" [style.top.px]="pos.top" [style.left.px]="pos.left">
+              @let item = selectedMenuItem();
+              @if (item) {
+                <button (click)="verActa(item); closeMenu()">Ver detalles</button>
+                <button [disabled]="!can('Descargar')" (click)="descargarActa(item); closeMenu()">Descargar</button>
+                @if (can('Editar')) { <button (click)="openEditModal(item)">Editar</button> }
+                @if (can('Editar')) { <button (click)="openEstadoModal(item); closeMenu()">Cambiar Estado</button> }
+                @if (can('Eliminar')) { <button (click)="closeMenu(); eliminarActa(item.id)">Eliminar</button> }
+              }
+            </div>
+          }
+        </div>
+        }
+
+        @if (detailMode()) {
+        <div class="detalle-col">
+          @if (selectedActa(); as acta) {
+            <!-- CABECERA ACTA -->
+            <div class="detalle-header">
+              <div class="detalle-header-info">
+                <span class="detalle-codigo">{{ acta.codigo }}</span>
+                <h2 class="detalle-titulo">{{ acta.titulo }}</h2>
+                <div class="detalle-meta">
+                  <span class="meta-item">
+                    <ion-icon name="calendar-outline" />
+                    {{ acta.fecha }}
+                  </span>
+                  <span class="meta-item">
+                    <ion-icon name="time-outline" />
+                    {{ acta.hora }}
+                  </span>
+                  <span class="meta-item">
+                    <ion-icon name="location-outline" />
+                    {{ acta.lugar }}
+                  </span>
+                </div>
+              </div>
+              @if (can('Ver') || can('Editar') || can('Eliminar')) {
+                <div class="detalle-actions" role="group" aria-label="Acciones del acta">
+                  <select class="detalle-action" aria-label="Herramientas del acta" (change)="ejecutarHerramienta($event)">
+                    <option value="">Herramientas del acta</option>
+                    @if (can('Descargar')) { <option value="pdf">Descargar PDF</option><option value="imprimir">Imprimir</option> }
+                    <option value="correo">Compartir por correo</option><option value="enlace">Copiar enlace</option>
+                  </select>
+                  @if (can('Editar')) {
+                    <button class="detalle-action" type="button" (click)="openEditModal(acta)">
+                      <ion-icon name="pencil-outline" aria-hidden="true" /> Editar
+                    </button>
+                    <button class="detalle-action" type="button" (click)="openEstadoModal(acta)">
+                      <ion-icon name="checkmark-circle-outline" aria-hidden="true" /> Cambiar estado
+                    </button>
+                  }
+                  @if (can('Eliminar')) {
+                    <button class="detalle-action detalle-action-danger" type="button" (click)="eliminarActa(acta.id)">
+                      <ion-icon name="trash-outline" aria-hidden="true" /> Eliminar
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- TABS -->
+            <div class="tabs-container">
+              <div class="tabs-header" role="tablist" aria-label="Secciones del acta">
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Información'" [attr.aria-selected]="activeTab() === 'Información'" (click)="cambiarTab('Información')">
+                  <ion-icon name="document-text-outline" aria-hidden="true" />
+                  <span class="tab-label">Información</span>
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Institución Participantes'" [attr.aria-selected]="activeTab() === 'Institución Participantes'" (click)="cambiarTab('Institución Participantes')">
+                  <ion-icon name="people-outline" aria-hidden="true" />
+                  <span class="tab-label">Institución Participantes</span>
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Acuerdos'" [attr.aria-selected]="activeTab() === 'Acuerdos'" (click)="cambiarTab('Acuerdos')">
+                  <ion-icon name="checkmark-circle-outline" aria-hidden="true" />
+                  <span class="tab-label">Acuerdos</span>
+                  @if (acta.acuerdosRel.length > 0) { <span class="tab-count">{{ acta.acuerdosRel.length }}</span> }
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Adjuntos'" [attr.aria-selected]="activeTab() === 'Adjuntos'" (click)="cambiarTab('Adjuntos')">
+                  <ion-icon name="attach-outline" aria-hidden="true" />
+                  <span class="tab-label">Adjuntos</span>
+                  @if (acta.adjuntos.length > 0) { <span class="tab-count">{{ acta.adjuntos.length }}</span> }
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Firmas'" [attr.aria-selected]="activeTab() === 'Firmas'" (click)="cambiarTab('Firmas')">
+                  <ion-icon name="create-outline" aria-hidden="true" />
+                  <span class="tab-label">Firmas</span>
+                  @if (acta.firmas.length > 0) { <span class="tab-count">{{ acta.firmas.length }}</span> }
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Asistencia'" [attr.aria-selected]="activeTab() === 'Asistencia'" (click)="cambiarTab('Asistencia')">
+                  <ion-icon name="qr-code-outline" aria-hidden="true" />
+                  <span class="tab-label">Asistencia</span>
+                  @if (acta.sesion && asistentes().length > 0) {
+                    <span class="tab-count">{{ asistentes().length }}</span>
+                  }
+                </button>
+                <button role="tab" class="tab-btn" [class.active]="activeTab() === 'Historial'" [attr.aria-selected]="activeTab() === 'Historial'" (click)="cambiarTab('Historial')">
+                  <ion-icon name="time-outline" aria-hidden="true" />
+                  <span class="tab-label">Historial</span>
+                  @if (acta.historial.length > 0) { <span class="tab-count">{{ acta.historial.length }}</span> }
+                </button>
+              </div>
+
+              <div class="tab-content">
+                @if (activeTab() === 'Información') {
+                  <div class="tab-info-layout">
+                    <div class="tab-info-left">
+                      <!-- OBJETIVOS -->
+                      <div class="info-section">
+                        <h4 class="info-section-title"><ion-icon name="document-text-outline" aria-hidden="true" />Objetivos</h4>
+                        @if (acta.objetivos) {
+                          <p class="info-text">{{ acta.objetivos }}</p>
+                        } @else {
+                          <div class="info-empty-state"><div><strong>Sin objetivos registrados</strong><p>Agrega los objetivos para dar contexto a esta acta.</p></div></div>
+                        }
+                      </div>
+
+                      <!-- TEMAS TRATADOS -->
+                      <div class="info-section">
+                        <h4 class="info-section-title"><ion-icon name="clipboard-outline" aria-hidden="true" />Temas tratados</h4>
+                        <ul class="info-list">
+                          @for (tema of acta.temas; track tema) {
+                            <li class="info-list-item">{{ tema }}</li>
+                          } @empty {
+                            <li class="info-empty-state compact"><div><strong>Sin temas tratados</strong><p>Los temas agregados aparecerán aquí.</p></div></li>
+                          }
+                        </ul>
+                      </div>
+
+                      <!-- ACUERDOS PRINCIPALES -->
+                      <div class="info-section">
+                        <h4 class="info-section-title"><ion-icon name="checkmark-circle-outline" aria-hidden="true" />Acuerdos principales</h4>
+                        <ul class="info-list">
+                          @for (acuerdo of acta.acuerdosRel; track acuerdo.id) {
+                            <li class="info-list-item">{{ acuerdo.descripcion }}</li>
+                          } @empty {
+                            <li class="info-empty-state compact"><div><strong>Sin acuerdos registrados</strong><p>Los acuerdos aprobados se mostrarán en esta sección.</p></div></li>
+                          }
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- RESUMEN LATERAL -->
+                    <div class="tab-info-right">
+                      <div class="resumen-card">
+                        <h4 class="resumen-title">Resumen</h4>
+                        <div class="resumen-item">
+                          <span class="resumen-label">Tipo de Acta</span>
+                          <span class="resumen-value">{{ acta.tipo }}</span>
+                        </div>
+                        <div class="resumen-item">
+                          <span class="resumen-label">Número</span>
+                          <span class="resumen-value">{{ acta.codigo }}</span>
+                        </div>
+                        <div class="resumen-item">
+                          <span class="resumen-label">Fecha</span>
+                          <span class="resumen-value">{{ acta.fecha }}</span>
+                        </div>
+                        <div class="resumen-item">
+                          <span class="resumen-label">Estado</span>
+                          <span class="resumen-value">
+                            <span class="estado-badge" [class]="getEstadoClass(acta.estado)">{{ acta.estado }}</span>
+                          </span>
+                        </div>
+                        <div class="resumen-item">
+                          <span class="resumen-label">Responsable</span>
+                          <span class="resumen-value">{{ acta.responsable }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                @if (activeTab() === 'Institución Participantes') {
+                  <div class="tab-participantes">
+                    @if (acta.institucionParticipantes) {
+                      <div class="info-section">
+                        <h4 class="info-section-title"><ion-icon name="people-outline" aria-hidden="true" />Nombre de la institución</h4>
+                        <p class="info-text">{{ acta.institucionParticipantes }}</p>
+                      </div>
+                    } @else {
+                      <p class="empty-state">No se ha registrado la institución de los participantes.</p>
+                    }
+                  </div>
+                }
+
+                @if (activeTab() === 'Acuerdos') {
+                  <div class="tab-acuerdos">
+                    @if (acta.acuerdosRel.length > 0) {
+                      <div class="acuerdos-list">
+                        @for (a of acta.acuerdosRel; track a.id; let i = $index) {
+                          <div class="acuerdo-item">
+                            <div class="acuerdo-header">
+                              <span class="acuerdo-num">#{{ i + 1 }}</span>
+                              <span class="badge badge-pendiente">{{ a.estado }}</span>
+                            </div>
+                            <p class="acuerdo-desc">{{ a.descripcion }}</p>
+                            <div class="acuerdo-meta">
+                              @if (a.responsable) {
+                                <span class="meta-item"><ion-icon name="people-outline" /> {{ a.responsable }}</span>
+                              }
+                              @if (a.fechaLimite) {
+                                <span class="meta-item"><ion-icon name="calendar-outline" /> {{ a.fechaLimite }}</span>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="empty-state">No hay acuerdos registrados.</p>
+                    }
+                  </div>
+                }
+
+                @if (activeTab() === 'Adjuntos') {
+                  <div class="tab-adjuntos">
+                    @if (acta.adjuntos.length > 0) {
+                      <div class="adjuntos-list">
+                        @for (adj of acta.adjuntos; track adj.id) {
+                          <div class="adjunto-item">
+                            <div class="adjunto-icon">
+                              <ion-icon [name]="getFileIcon(adj.tipoMime)" />
+                            </div>
+                            <div class="adjunto-info">
+                              <span class="adjunto-nombre">{{ adj.nombreOriginal }}</span>
+                              <span class="adjunto-tamano">{{ formatTamano(adj.tamano) }}</span>
+                            </div>
+                            <div class="adjunto-actions">
+                      <button type="button" class="btn-icon" title="Abrir archivo" aria-label="Abrir archivo adjunto" [disabled]="!can('Descargar')" (click)="descargarAdjunto(acta, adj, true)">
+                                <ion-icon name="eye-outline" />
+                              </button>
+                      <button type="button" class="btn-icon" title="Descargar archivo" aria-label="Descargar archivo adjunto" [disabled]="!can('Descargar')" (click)="descargarAdjunto(acta, adj)">
+                                <ion-icon name="download-outline" />
+                              </button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="empty-state">No hay adjuntos disponibles.</p>
+                    }
+                  </div>
+                }
+
+                @if (activeTab() === 'Firmas') {
+                  <div class="tab-firmas">
+                    @if (acta.firmas.length > 0) {
+                      <table class="table-mini">
+                        <thead>
+                          <tr><th>Nombre</th><th>Rol</th><th>Fecha</th></tr>
+                        </thead>
+                        <tbody>
+                          @for (f of acta.firmas; track f.id) {
+                            <tr>
+                              <td class="cell-name">{{ f.nombre }}</td>
+                              <td>{{ f.rol }}</td>
+                              <td>{{ f.fecha }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    } @else {
+                      <p class="empty-state">No hay firmas registradas.</p>
+                    }
+                  </div>
+                }
+
+                @if (activeTab() === 'Asistencia') {
+                  <div class="tab-asistencia">
+                    @if (!acta.sesion) {
+                      <div class="asistencia-vinculada-empty">
+                        <ion-icon name="qr-code-outline" class="empty-icon" />
+                        <h4>Sesión de asistencia no vinculada</h4>
+                        <p>Esta acta no tiene una sesión de asistencia QR vinculada. Edita el acta para crear o vincular una sesión.</p>
+                      </div>
+                    } @else {
+                      <div class="asistencia-sesion-header">
+                        <div class="sesion-info-badge">
+                          <ion-icon name="qr-code-outline" />
+                          <span>{{ acta.sesion.nombre }} ({{ acta.sesion.codigo }})</span>
+                          <span class="sesion-status" [class.activo]="acta.sesion.activo">
+                            {{ acta.sesion.activo ? 'Activa' : 'Inactiva' }}
+                          </span>
+                        </div>
+                        <span class="asistencia-count">{{ asistentes().length }} asistentes</span>
+                      </div>
+                      @if (asistentesLoading()) {
+                        <div class="loading-state">
+                          <div class="spinner"></div>
+                          <p>Cargando asistentes...</p>
+                        </div>
+                      } @else if (asistentesError()) {
+                        <div class="content-feedback compact" role="alert">
+                          <h3>No se pudo consultar la asistencia</h3>
+                          <p>Intenta nuevamente para actualizar los registros.</p>
+                          <button class="btn-primary" type="button" (click)="cambiarTab('Asistencia')">Reintentar</button>
+                        </div>
+                      } @else if (asistentes().length > 0) {
+                        <table class="table-mini">
+                          <thead>
+                            <tr><th>Nombre</th><th>Correo</th><th>Tipo</th><th>Hora</th><th>Estado</th></tr>
+                          </thead>
+                          <tbody>
+                            @for (a of asistentes(); track a.tipo + '-' + a.id) {
+                              <tr>
+                                <td class="cell-name">{{ a.nombre }}</td>
+                                <td>{{ a.correo }}</td>
+                                <td>
+                                  <span class="badge" [class.badge-registrado]="a.tipo === 'Registrado'" [class.badge-invitado]="a.tipo === 'Invitado'">
+                                    {{ a.tipo }}
+                                  </span>
+                                </td>
+                                <td>{{ a.horaEntrada || a.horaRegistro || '—' }}</td>
+                                <td>
+                                  @if (a.tipo === 'Registrado') {
+                                    <span class="badge" [class.badge-presente]="a.estado === 'presente'" [class.badge-tardanza]="a.estado === 'tardanza'">
+                                      {{ a.estado || '—' }}
+                                    </span>
+                                  } @else {
+                                    <span class="badge badge-registrado">Confirmado</span>
+                                  }
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      } @else {
+                        <p class="empty-state">No hay asistentes registrados en esta sesión.</p>
+                      }
+                    }
+                  </div>
+                }
+
+                @if (activeTab() === 'Historial') {
+                  <div class="tab-historial">
+                    @if (acta.historial.length > 0) {
+                      <table class="table-mini">
+                        <thead>
+                          <tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr>
+                        </thead>
+                        <tbody>
+                          @for (h of acta.historial; track h.id) {
+                            <tr>
+                              <td>{{ h.fecha }}</td>
+                              <td class="cell-name">{{ h.usuario }}</td>
+                              <td>
+                                <span class="badge"
+                                  [class.badge-crear]="h.accion === 'CREAR'"
+                                  [class.badge-actualizar]="h.accion === 'ACTUALIZAR'"
+                                  [class.badge-eliminar]="h.accion === 'ELIMINAR'">
+                                  {{ h.accion }}
+                                </span>
+                              </td>
+                              <td>{{ h.detalle }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    } @else {
+                      <p class="empty-state">No hay registros de actividad.</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="detalle-empty">
+              <ion-icon name="document-text-outline" class="empty-icon" />
+              <h3>No se encontró el acta</h3>
+              <p>Puede haber sido eliminada o no estar disponible.</p>
+              <button type="button" class="btn-primary" (click)="volverALista()">Volver a actas</button>
+            </div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal Cambiar Estado -->
+<ion-modal class="acta-estado-modal" [isOpen]="showEstadoModal()" (didDismiss)="closeEstadoModal()">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Cambiar estado</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar cambio de estado" (click)="closeEstadoModal()" title="Cerrar cambio de estado">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <p class="estado-modal-hint">Selecciona el nuevo estado del acta.</p>
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label" for="acta-nuevo-estado">Nuevo estado</label>
+          <select id="acta-nuevo-estado" class="modal-select" [value]="nuevoEstado()" (change)="nuevoEstado.set($any($event.target).value)">
+            <option value="Borrador">Borrador</option>
+            <option value="Pendiente Firma">Pendiente Firma</option>
+            <option value="Firmada">Firmada</option>
+            <option value="Terminada">Terminada</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeEstadoModal()">Cancelar</button>
+        <button class="btn-primary" (click)="guardarCambioEstado()">Cambiar</button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

@@ -1,0 +1,92 @@
+.notifications-card {
+  margin: 0;
+  height: 100%; border: 1px solid var(--app-border); border-radius: 15px;
+  box-shadow: var(--card-shadow);
+
+  ion-card-header {
+    padding: 20px 20px 0;
+  }
+
+  ion-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a202c;
+  }
+
+  ion-card-content {
+    padding: 8px 16px 16px;
+  }
+}
+.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card-heading p { margin: 4px 0 0; color: #8190a5; font-size: 11px; }
+.card-heading > span { min-width: 25px; padding: 4px 7px; border-radius: 999px; color: var(--institutional-blue); background: var(--brand-soft); text-align: center; font-size: 10px; font-weight: 750; }
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  cursor: default;
+  transition: background 0.2s;
+  position: relative;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &.read {
+    opacity: 0.7;
+  }
+}
+
+.notif-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    font-size: 13px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  p {
+    font-size: 12px;
+    color: #475569;
+    margin: 0 0 4px;
+    line-height: 1.4;
+  }
+
+  small {
+    font-size: 11px;
+    color: #94a3b8;
+  }
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ion-color-primary);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.empty-state {
+  min-height: 190px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 24px; color: #94a3b8;
+}
+.empty-state > span { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 10px; border-radius: 13px; color: #15803d; background: #ecfdf3; font-size: 19px; }
+.empty-state strong { color: #334155; font-size: 13px; }
+.empty-state p { margin: 5px 0 0; font-size: 11px; }

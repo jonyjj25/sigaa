@@ -1,0 +1,259 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [userPhoto]="authService.currentUser()?.fotografiaRuta || ''"
+    [collapsed]="authService.sidebarCollapsed()" (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <section class="memos-content">
+      <app-correspondencia-tabs active="memos" />
+
+      <header class="page-header">
+        <div><span class="eyebrow">Correspondencia interna</span>
+          <h1>Memos institucionales</h1>
+          <p>Administra consecutivos, responsables y seguimiento de cada memorando.</p>
+        </div>
+        <div class="header-actions">
+          @if (can('Gestionar números')) { <button type="button" class="btn-secondary"
+            (click)="abrirNumeros()"><ion-icon name="list-outline" /> Gestionar números</button> }
+          @if (can('Crear')) { <button type="button" class="btn-primary" (click)="abrirRegistro()"><ion-icon
+              name="add-outline" /> Registrar memo</button> }
+        </div>
+      </header>
+
+      @if (numerosError()) {
+      <div class="feedback error" role="alert">
+        <span>No fue posible actualizar los números disponibles.</span>
+        <button type="button" class="btn-secondary" (click)="cargarNumeros()">Reintentar</button>
+      </div>
+      }
+
+      <div class="summary-grid" aria-label="Resumen de memos">
+        <article><span class="summary-icon blue"><ion-icon name="time-outline" /></span>
+          <div><strong>{{ enSeguimiento() }}</strong><small>En seguimiento</small></div>
+        </article>
+        <article><span class="summary-icon green"><ion-icon name="checkmark-circle-outline" /></span>
+          <div><strong>{{ completados() }}</strong><small>Completados</small></div>
+        </article>
+        <article><span class="summary-icon red"><ion-icon name="trash-outline" /></span>
+          <div><strong>{{ anulados() }}</strong><small>Anulados</small></div>
+        </article>
+        <article><span class="summary-icon violet"><ion-icon name="list-outline" /></span>
+          <div><strong>{{ disponibles() }}</strong><small>Números disponibles</small></div>
+        </article>
+      </div>
+
+      <section class="memo-panel">
+        <div class="toolbar">
+          <label class="search-field"><ion-icon name="search-outline" /><input type="search" [ngModel]="filtroTexto()"
+              (ngModelChange)="filtroTexto.set($event)"
+              placeholder="Buscar por número, asunto, destinatario o responsable" /></label>
+          <select [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)" aria-label="Filtrar por estado">
+            <option value="TODOS">Todos los estados</option>
+            <option value="EN_SEGUIMIENTO">En seguimiento</option>
+            <option value="COMPLETADO">Completados</option>
+            <option value="ANULADO">Anulados</option>
+          </select>
+          <span class="results">{{ memosFiltrados().length }} resultados</span>
+        </div>
+
+        @if (loading()) {
+        <div class="feedback"><ion-icon name="refresh-outline" /> Cargando memos…</div>
+        } @else if (loadError()) {
+        <div class="feedback error">
+          <div><strong>No fue posible cargar los memos.</strong><span>Comprueba la conexión e inténtalo
+              nuevamente.</span></div><button type="button" class="btn-secondary"
+            (click)="cargarDatos()">Reintentar</button>
+        </div>
+        } @else if (!memosFiltrados().length) {
+        <div class="empty-state"><span><ion-icon name="document-text-outline" /></span>
+          <h2>No hay memos para mostrar</h2>
+          <p>Registra un memo o cambia los criterios de búsqueda.</p>
+        </div>
+        } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Asunto y destinatario</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Registro</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>@for (memo of memosFiltrados(); track memo.id) {
+              <tr (click)="abrirDetalle(memo)">
+                <td><strong class="memo-number">{{ memo.numero }}</strong></td>
+                <td><strong>{{ memo.asunto }}</strong><small>{{ memo.destino }}</small></td>
+                <td><span class="person"><ion-icon name="people-outline" />{{ memo.seguimientoUsuario.nombre }}</span>
+                </td>
+                <td><span class="estado" [class]="estadoClase(memo.estado)">{{ estadoLabel(memo.estado) }}</span></td>
+                <td><span>{{ formatFecha(memo.createdAt) }}</span><small>Por {{ memo.creadoPor.nombre }}</small></td>
+                <td><button type="button" class="view-button" (click)="$event.stopPropagation(); abrirDetalle(memo)">Ver
+                    seguimiento</button></td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+      </section>
+    </section>
+  </main>
+</div>
+
+@if (showRegistro()) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card register-modal" role="dialog" aria-modal="true" aria-labelledby="register-memo-title">
+    <header>
+      <div><span class="eyebrow">Nuevo registro</span>
+        <h2 id="register-memo-title">Registrar memo</h2>
+      </div><button type="button" class="icon-close" aria-label="Cerrar" (click)="cerrarRegistro()" title="Cerrar"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="modal-body">
+      <fieldset class="number-field">
+        <legend>Número disponible</legend>
+        <p>Selecciona uno de los próximos cinco consecutivos. Se reservará durante 10 minutos.</p>
+        <div class="number-grid">@for (numero of numerosSeleccionables(); track numero.id) { <button type="button"
+            [class.selected]="formNumeroId() === numero.id" [disabled]="reserving() || saving()"
+            (click)="seleccionarNumero(numero.id)"><span>{{ numero.numero }}</span><small>{{ formNumeroId() ===
+              numero.id ? 'Reservado para ti' : 'Disponible' }}</small></button> }</div>@if (formSubmitted() &&
+        !formNumeroId()) { <small class="field-error">Selecciona un número.</small> }
+      </fieldset>
+      <label>Asunto<input maxlength="200" [ngModel]="formAsunto()" (ngModelChange)="formAsunto.set($event)"
+          [class.invalid]="formSubmitted() && !formAsunto().trim()" placeholder="Asunto del memorando" /></label>
+      <label>Dirigido a<input maxlength="300" [ngModel]="formDestino()" (ngModelChange)="formDestino.set($event)"
+          [class.invalid]="formSubmitted() && !formDestino().trim()"
+          placeholder="Persona, unidad o institución" /></label>
+      <label>Responsable del seguimiento<select [ngModel]="formResponsableId()"
+          (ngModelChange)="formResponsableId.set($event)" [class.invalid]="formSubmitted() && !formResponsableId()">
+          <option value="" disabled>Selecciona una persona</option>@for (usuario of usuarios(); track usuario.id) {
+          <option [value]="usuario.id">{{ usuario.nombre }}</option> }
+        </select></label>
+      <label class="full">Información inicial<textarea rows="4" maxlength="5000" [ngModel]="formDescripcion()"
+          (ngModelChange)="formDescripcion.set($event)"
+          placeholder="Describe el propósito o la gestión inicial"></textarea><small>Luego podrás agregar nuevas
+          actualizaciones sin reemplazar esta información.</small></label>
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="cerrarRegistro()">Cancelar</button><button
+        type="button" class="btn-primary" [disabled]="saving() || reserving()" (click)="guardar()">{{ saving() ?
+        'Guardando…' : 'Guardar memo' }}</button></footer>
+  </section>
+</div>
+}
+
+@if (seleccionado(); as memo) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card detail-modal" role="dialog" aria-modal="true" aria-labelledby="memo-detail-title">
+    <header>
+      <div><span class="eyebrow">Memo {{ memo.numero }}</span>
+        <h2 id="memo-detail-title">{{ memo.asunto }}</h2>
+      </div><button type="button" class="icon-close" aria-label="Cerrar" (click)="cerrarDetalle()" title="Cerrar"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="detail-body">
+      <div class="detail-summary">
+        <div><span>Dirigido a</span><strong>{{ memo.destino }}</strong></div>
+        <div><span>Responsable</span><strong>{{ memo.seguimientoUsuario.nombre }}</strong></div>
+        <div><span>Registrado por</span><strong>{{ memo.creadoPor.nombre }}</strong></div>
+        <div><span>Estado</span><span class="estado" [class]="estadoClase(memo.estado)">{{ estadoLabel(memo.estado)
+            }}</span></div>
+      </div>
+      @if (memo.descripcion) { <div class="initial-info"><span>Información inicial</span>
+        <p>{{ memo.descripcion }}</p>
+      </div> }
+      @if (memo.estado === 'ANULADO') { <div class="annulled-info"><strong>Anulado por {{ memo.anuladoPor?.nombre ||
+          'Sistema' }}</strong>
+        <p>{{ memo.anulacionMotivo }}</p><small>{{ formatFecha(memo.anuladoAt) }}</small>
+      </div> }
+      @if (memo.estado === 'EN_SEGUIMIENTO' && can('Dar seguimiento')) { <div class="followup-box"><label>Nueva
+          actualización<textarea rows="3" maxlength="5000" [ngModel]="seguimiento()"
+            (ngModelChange)="seguimiento.set($event)"
+            [class.invalid]="seguimientoSubmitted() && seguimiento().trim().length < 3"
+            placeholder="Escribe el avance, respuesta o gestión realizada"></textarea></label>
+        <div><small>Se agregará a la trazabilidad sin eliminar información anterior.</small><button type="button"
+            class="btn-primary" [disabled]="saving() || seguimiento().trim().length < 3"
+            (click)="agregarSeguimiento()">Agregar seguimiento</button></div>
+      </div> }
+      <section class="timeline-section">
+        <div class="section-title">
+          <div><span class="eyebrow">Trazabilidad</span>
+            <h3>Historial del memo</h3>
+          </div><span>{{ memo.historial.length }} eventos</span>
+        </div>@if (memo.historial.length) { <ol class="timeline">@for (evento of memo.historial; track evento.id) { <li>
+            <span class="timeline-dot"></span>
+            <div>
+              <div class="event-head"><strong>{{ evento.accion }}</strong><time>{{ formatFecha(evento.createdAt)
+                  }}</time></div>
+              <p>{{ evento.detalle }}</p><small>Por {{ evento.usuario?.nombre || 'Sistema' }}</small>
+            </div>
+          </li> }</ol> } @else { <p class="timeline-empty">Aún no hay actualizaciones.</p> }
+      </section>
+    </div>
+    <footer>@if (can('Ver')) { <button type="button" class="btn-secondary" (click)="visualizarDocumento(memo)">Visualizar documento</button>
+      @if (memo.estado !== 'ANULADO') { <button type="button" class="btn-secondary" (click)="descargarWord(memo)">Descargar Word</button> } }
+      @if (memo.estado === 'EN_SEGUIMIENTO' && can('Anular')) { <button type="button"
+        class="btn-danger ghost-danger" (click)="abrirAnulacion()">Anular memo</button> }<span
+        class="footer-spacer"></span><button type="button" class="btn-secondary"
+        (click)="cerrarDetalle()">Cerrar</button>@if (memo.estado === 'EN_SEGUIMIENTO' && can('Completar')) { <button
+        type="button" class="btn-success" [disabled]="saving()" (click)="completar()"><ion-icon
+          name="checkmark-circle-outline" /> Completar seguimiento</button> }</footer>
+  </section>
+</div>
+}
+
+@if (vistaPrevia(); as preview) {
+<app-nota-document-preview [data]="preview"
+  [pdfUrl]="preview.estado === 'OFICIALIZADA' ? '/api/memos/' + preview.memoId + '/documento.pdf' : undefined"
+  (closed)="vistaPrevia.set(null)" />
+}
+
+@if (showNumeros()) {
+<div class="modal-backdrop" role="presentation">
+  <section class="modal-card numbers-modal" role="dialog" aria-modal="true" aria-labelledby="numbers-title">
+    <header>
+      <div><span class="eyebrow">Inventario</span>
+        <h2 id="numbers-title">Números de memos</h2>
+      </div><button type="button" class="icon-close" aria-label="Cerrar números de memos" title="Cerrar números de memos" (click)="cerrarNumeros()"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="numbers-body"><label>Pega los consecutivos<textarea rows="7" [ngModel]="cargaNumeros()"
+          (ngModelChange)="cargaNumeros.set($event)"
+          placeholder="MEMO-2026-001&#10;MEMO-2026-002&#10;MEMO-2026-003"></textarea><small>Uno por línea o separados
+          por coma. No se permiten duplicados.</small></label>
+      <div class="inventory-summary"><span><strong>{{ disponibles() }}</strong> disponibles</span><span><strong>{{
+            numeros().length }}</strong> totales</span></div>
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="cerrarNumeros()">Cerrar</button><button type="button"
+        class="btn-primary" [disabled]="saving()" (click)="cargarLote()">{{ saving() ? 'Cargando…' : 'Añadir números'
+        }}</button></footer>
+  </section>
+</div>
+}
+
+@if (showAnulacion() && seleccionado(); as memo) {
+<div class="modal-backdrop nested-backdrop" role="presentation">
+  <section class="modal-card annul-modal" role="dialog" aria-modal="true" aria-labelledby="annul-title">
+    <header>
+      <div><span class="eyebrow">Memo {{ memo.numero }}</span>
+        <h2 id="annul-title">Anular memo</h2>
+      </div><button type="button" class="icon-close" aria-label="Cerrar anulación de memo" title="Cerrar anulación de memo" (click)="cerrarAnulacion()"><ion-icon
+          name="close-outline" /></button>
+    </header>
+    <div class="annul-body">
+      <p><strong>El memo dejará de estar activo, pero no será eliminado.</strong> La acción y su motivo quedarán en la
+        trazabilidad.</p><label>Motivo de la anulación <span>*</span><textarea rows="4" minlength="5" maxlength="1000"
+          [ngModel]="motivoAnulacion()" (ngModelChange)="motivoAnulacion.set($event)"
+          placeholder="Explica por qué se anula este memo"></textarea><small>Campo obligatorio · {{
+          motivoAnulacion().length }}/1000</small></label>
+    </div>
+    <footer><button type="button" class="btn-secondary" (click)="cerrarAnulacion()">Cancelar</button><button
+        type="button" class="btn-danger" [disabled]="saving() || motivoAnulacion().trim().length < 5"
+        (click)="anular()">{{ saving() ? 'Anulando…' : 'Anular memo' }}</button></footer>
+  </section>
+</div>
+}

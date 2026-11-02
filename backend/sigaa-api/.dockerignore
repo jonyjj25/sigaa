@@ -1,0 +1,16 @@
+.env
+.env.*
+.git
+target
+uploads
+backups
+backups-external
+*.log
+*.dump
+*.bak
+*.pem
+*.key
+*.p12
+*.pfx
+**/secrets
+**/credentials

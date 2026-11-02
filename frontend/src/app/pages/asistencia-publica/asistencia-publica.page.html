@@ -1,0 +1,108 @@
+<div class="publica-wrapper">
+  <!-- LOADING -->
+  @if (sessionLoading()) {
+    <div class="publica-card">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Cargando sesión...</p>
+      </div>
+    </div>
+  }
+
+  <!-- SESSION NOT FOUND -->
+  @else if (sessionNotFound()) {
+    <div class="publica-card">
+      <div class="error-container">
+        <div class="error-icon-big">?</div>
+        <h1>Sesión no encontrada</h1>
+        <p>El código <strong>{{codigo()}}</strong> no corresponde a una sesión activa.</p>
+      </div>
+    </div>
+  }
+
+  <!-- SUCCESS -->
+  @else if (registrado()) {
+    <div class="publica-card success-card">
+      <div class="success-icon-big">
+        <ion-icon name="checkmark-circle-outline" />
+      </div>
+      <h1>¡Asistencia Registrada!</h1>
+      <p>{{ successMessage() }}</p>
+    </div>
+  }
+
+  <!-- MAIN FORM -->
+  @else {
+    <div class="publica-card">
+      <div class="publica-header">
+        <div class="logo-sigaa">SIGAA</div>
+        <h1>Registro de Asistencia</h1>
+        <p class="session-name">{{ sessionName() }}</p>
+        <p class="codigo-sesion">Código: <strong>{{ codigo() }}</strong></p>
+      </div>
+
+      <!-- MODE TABS -->
+      <div class="mode-tabs">
+        <button class="mode-tab" [class.active]="modo() === 'usuario'" (click)="setModo('usuario')">
+          <ion-icon name="person-outline" /> Soy usuario
+        </button>
+        <button class="mode-tab" [class.active]="modo() === 'invitado'" (click)="setModo('invitado')">
+          <ion-icon name="help-circle-outline" /> Soy invitado
+        </button>
+      </div>
+
+      <div class="publica-body">
+        <!-- USUARIO MODE -->
+        @if (modo() === 'usuario') {
+          <div class="mode-section">
+            <p class="mode-hint">Inicia sesión con tu cuenta institucional y registra únicamente tu propia asistencia.</p>
+            <button class="btn-registrar" (click)="registrarUsuario()" [disabled]="enviando()">
+              {{ enviando() ? 'Registrando...' : 'Registrar mi asistencia' }}
+            </button>
+          </div>
+        }
+
+        <!-- INVITADO MODE -->
+        @else {
+          <div class="mode-section">
+            <p class="mode-hint">Completa tus datos para registrarte como invitado.</p>
+
+            <div class="form-group">
+              <label>Nombre completo <span class="req">*</span></label>
+              <input type="text" class="form-input" placeholder="Ej: Juan Pérez" [(ngModel)]="formData.nombre" />
+            </div>
+            <div class="form-group">
+              <label>Correo electrónico <span class="req">*</span></label>
+              <input type="email" class="form-input" placeholder="correo@ejemplo.com" [(ngModel)]="formData.correo" />
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input type="tel" class="form-input" placeholder="+507 6000-0000" [(ngModel)]="formData.telefono" />
+            </div>
+            <div class="form-group">
+              <label>Institución / Empresa</label>
+              <input type="text" class="form-input" placeholder="Nombre de la institución" [(ngModel)]="formData.institucion" />
+            </div>
+            <div class="form-group">
+              <label>Cargo</label>
+              <input type="text" class="form-input" placeholder="Tu cargo" [(ngModel)]="formData.cargo" />
+            </div>
+
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="formData.aceptaTerminos" />
+              <span>Acepto que mis datos sean registrados para control de asistencia</span>
+            </label>
+
+            <button class="btn-registrar" (click)="registrarInvitado()" [disabled]="enviando()">
+              {{ enviando() ? 'Registrando...' : 'Registrar asistencia' }}
+            </button>
+          </div>
+        }
+
+        @if (error()) {
+          <div class="error-msg">{{ error() }}</div>
+        }
+      </div>
+    </div>
+  }
+</div>

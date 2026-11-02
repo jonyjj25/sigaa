@@ -1,0 +1,201 @@
+<section class="module-page" aria-labelledby="module-page-title">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Configuración del sistema</span>
+      <h1 id="module-page-title">Módulos instalados</h1>
+      <p>Administra su presentación, disponibilidad y posición en la navegación.</p>
+    </div>
+    <span class="module-count" aria-label="Cantidad de módulos instalados">
+      <strong>{{ modules().length }}</strong> instalados
+    </span>
+  </header>
+
+  <div class="scope-notice" role="note">
+    <ion-icon name="information-circle-outline" aria-hidden="true" />
+    <div>
+      <strong>Registro protegido</strong>
+      <span>Las funcionalidades se instalan mediante versiones del sistema. Aquí no se crean ni eliminan rutas técnicas.</span>
+    </div>
+  </div>
+
+  <div class="save-bar" *ngIf="dirty()">
+    <span>Tienes cambios de orden o estado pendientes.</span>
+    <button type="button" class="btn-primary" [disabled]="saving()" (click)="saveChanges()">
+      <ion-icon name="save-outline" aria-hidden="true" />
+      {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+    </button>
+  </div>
+
+  <section class="edit-panel" *ngIf="showForm() && editingModule() as selected" aria-labelledby="edit-module-title">
+    <header class="panel-header">
+      <div>
+        <span class="eyebrow">Presentación del módulo</span>
+        <h2 id="edit-module-title">Configurar {{ selected.nombre }}</h2>
+      </div>
+      <button type="button" class="icon-button" aria-label="Cerrar configuración del módulo" (click)="cancelForm()" title="Cerrar configuración del módulo">
+        <ion-icon name="close-outline" aria-hidden="true" />
+      </button>
+    </header>
+
+    <div class="technical-identity" aria-label="Identidad técnica de solo lectura">
+      <div><span>Código</span><code>{{ selected.codigo || 'Sin código' }}</code></div>
+      <div><span>Ruta instalada</span><code>{{ selected.ruta }}</code></div>
+      <small>El código y la ruta son inmutables porque identifican código desplegado.</small>
+    </div>
+
+    <div class="form-grid">
+      <label for="module-name">
+        <span>Nombre visible *</span>
+        <input id="module-name" [(ngModel)]="formNombre" maxlength="100" autocomplete="off" />
+      </label>
+
+      <label for="module-label">
+        <span>Etiqueta breve</span>
+        <input id="module-label" [(ngModel)]="formEtiqueta" maxlength="50" autocomplete="off" />
+      </label>
+
+      <label for="module-category">
+        <span>Categoría</span>
+        <select id="module-category" [(ngModel)]="formCategoria">
+          <option value="principal">Principal</option>
+          <option value="academico">Académico</option>
+          <option value="asistencia">Asistencia</option>
+          <option value="gestion">Gestión</option>
+          <option value="documentos">Documentos</option>
+          <option value="reportes">Reportes</option>
+          <option value="sistema">Sistema</option>
+          <option value="personal">Personal</option>
+        </select>
+      </label>
+
+      <label for="module-icon">
+        <span>Icono</span>
+        <span class="icon-selector">
+          <ion-icon [name]="formIcono || 'grid-outline'" aria-hidden="true" />
+          <select id="module-icon" [(ngModel)]="formIcono">
+            <option *ngIf="formIcono && !iconOptions.includes(formIcono)" [value]="formIcono">{{ formIcono }}</option>
+            <option *ngFor="let icon of iconOptions" [value]="icon">{{ icon }}</option>
+          </select>
+        </span>
+      </label>
+
+      <label for="module-color">
+        <span>Color identificador</span>
+        <span class="color-selector">
+          <input id="module-color" [(ngModel)]="formColor" type="color" />
+          <code>{{ formColor }}</code>
+        </span>
+      </label>
+
+      <label class="full-width" for="module-description">
+        <span>Descripción</span>
+        <textarea id="module-description" [(ngModel)]="formDescripcion" maxlength="500" rows="3"></textarea>
+      </label>
+
+      <label class="check-option">
+        <input type="checkbox" [(ngModel)]="formVisibleEnMenu" />
+        <span><strong>Visible en el menú</strong><small>Permite mostrarlo en la navegación de usuarios autorizados.</small></span>
+      </label>
+
+      <label class="check-option">
+        <input type="checkbox" [(ngModel)]="formVisibleEnDashboard" />
+        <span><strong>Visible en el panel</strong><small>Lo habilita para superficies de resumen que consuman esta configuración.</small></span>
+      </label>
+    </div>
+
+    <footer class="form-actions">
+      <button type="button" class="btn-secondary" [disabled]="savingForm()" (click)="cancelForm()">Cancelar</button>
+      <button type="button" class="btn-primary" [disabled]="!formNombre.trim() || savingForm()" (click)="submitForm()">
+        {{ savingForm() ? 'Guardando…' : 'Guardar presentación' }}
+      </button>
+    </footer>
+  </section>
+
+  <div class="toolbar">
+    <label class="search-field" for="module-search">
+      <ion-icon name="search-outline" aria-hidden="true" />
+      <input
+        id="module-search"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        placeholder="Buscar por nombre, código, ruta o categoría"
+        autocomplete="off"
+      />
+    </label>
+    <span class="reorder-help" *ngIf="reorderBlocked()">Limpia la búsqueda para cambiar el orden.</span>
+  </div>
+
+  <div class="feedback-state" *ngIf="loading()" role="status">Cargando módulos instalados…</div>
+
+  <div class="feedback-state error" *ngIf="!loading() && loadError()" role="alert">
+    <span>{{ loadError() }}</span>
+    <button type="button" class="btn-secondary" (click)="loadModules()">
+      <ion-icon name="refresh-outline" aria-hidden="true" /> Reintentar
+    </button>
+  </div>
+
+  <div class="table-shell" *ngIf="!loading() && !loadError()">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Módulo</th>
+            <th scope="col">Código</th>
+            <th scope="col">Ruta</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Orden</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let module of filteredModules()">
+            <td>
+              <div class="module-cell">
+                <span class="module-color" [style.background]="module.color || '#64748b'" aria-hidden="true"></span>
+                <ion-icon [name]="module.icono || 'grid-outline'" aria-hidden="true" />
+                <div>
+                  <strong>{{ module.nombre }}</strong>
+                  <small *ngIf="module.descripcion">{{ module.descripcion }}</small>
+                </div>
+              </div>
+            </td>
+            <td><code>{{ module.codigo || '—' }}</code></td>
+            <td><code>{{ module.ruta }}</code></td>
+            <td><span class="category-badge">{{ module.categoria || 'principal' }}</span></td>
+            <td>
+              <div class="state-control">
+                <ion-toggle
+                  [checked]="module.estado"
+                  [attr.aria-label]="(module.estado ? 'Desactivar ' : 'Activar ') + module.nombre"
+                  (ionChange)="setLocalState(module, $event.detail.checked)"
+                />
+                <span [class.inactive]="!module.estado">{{ module.estado ? 'Activo' : 'Inactivo' }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="order-controls">
+                <button type="button" class="icon-button" [attr.aria-label]="'Subir ' + module.nombre" [disabled]="reorderBlocked() || isFirst(module)" (click)="moveUp(module)" [title]="'Subir ' + module.nombre">
+                  <ion-icon name="chevron-up-outline" aria-hidden="true" />
+                </button>
+                <span>{{ module.orden }}</span>
+                <button type="button" class="icon-button" [attr.aria-label]="'Bajar ' + module.nombre" [disabled]="reorderBlocked() || isLast(module)" (click)="moveDown(module)" [title]="'Bajar ' + module.nombre">
+                  <ion-icon name="chevron-down-outline" aria-hidden="true" />
+                </button>
+              </div>
+            </td>
+            <td>
+              <button type="button" class="icon-button edit" [attr.aria-label]="'Configurar ' + module.nombre" (click)="editModule(module)" [title]="'Configurar ' + module.nombre">
+                <ion-icon name="create-outline" aria-hidden="true" />
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="empty-state" *ngIf="filteredModules().length === 0">
+      No se encontraron módulos con ese criterio.
+    </div>
+    <footer class="table-footer">Mostrando {{ filteredModules().length }} de {{ modules().length }} módulos instalados</footer>
+  </div>
+</section>

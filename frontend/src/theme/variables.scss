@@ -1,2 +1,265 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+@use 'sass:color';
+
+$institutional-blue: #2563eb;
+$success: #16a34a;
+$warning: #f59e0b;
+$danger: #dc2626;
+
+/* Ionic usa también RGB, contraste y variantes en sus componentes nativos.
+   Derivarlas del mismo color evita mantener paletas paralelas. */
+@mixin ionic-color($name, $value, $contrast, $base: $value) {
+  --ion-color-#{$name}: #{$base};
+  --ion-color-#{$name}-rgb: #{color.channel($value, 'red', $space: rgb)}, #{color.channel($value, 'green', $space: rgb)}, #{color.channel($value, 'blue', $space: rgb)};
+  --ion-color-#{$name}-contrast: #{$contrast};
+  --ion-color-#{$name}-contrast-rgb: #{color.channel($contrast, 'red', $space: rgb)}, #{color.channel($contrast, 'green', $space: rgb)}, #{color.channel($contrast, 'blue', $space: rgb)};
+  --ion-color-#{$name}-shade: #{color.mix(#000000, $value, 12%)};
+  --ion-color-#{$name}-tint: #{color.mix(#ffffff, $value, 10%)};
+}
+
+:root {
+  /* Tokens semánticos: los componentes consumen propósito, no colores. */
+  --institutional-blue: #{$institutional-blue};
+  --surface-page: #f4f7fb;
+  --surface-panel: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f7f9fc;
+  --surface-overlay: #ffffff;
+  --surface-hover: #edf3fa;
+  --surface-selected: color-mix(in srgb, var(--institutional-blue) 10%, var(--surface-panel));
+  --text-strong: #172033;
+  --text-default: #334155;
+  --text-soft: #526179;
+  --text-muted-accessible: #64748b;
+  --text-inverse: #ffffff;
+  --text-link: var(--institutional-blue);
+  --brand-primary: var(--institutional-blue);
+  --brand-soft: color-mix(in srgb, var(--institutional-blue) 12%, var(--surface-panel));
+  --brand-hover: color-mix(in srgb, var(--institutional-blue) 16%, var(--surface-panel));
+  --brand-border: color-mix(in srgb, var(--institutional-blue) 38%, var(--border-default));
+  --text-on-brand: #ffffff;
+  --border-default: #d4deeb;
+  --border-subtle: #e7edf5;
+  --border-strong: #9aabc0;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 24px 64px rgba(15, 23, 42, 0.22);
+  --control-bg: #ffffff;
+  --control-bg-hover: #f8fafc;
+  --control-text: #1e293b;
+  --control-placeholder: #64748b;
+  --control-border: #b8c5d6;
+  --control-focus-border: var(--institutional-blue);
+  --focus-ring: var(--institutional-blue);
+  --focus-shadow: 0 0 0 3px rgba(37, 99, 235, .28);
+  --table-header-bg: #eaf0f6;
+  --table-header-text: #334e68;
+  --table-row-bg: #ffffff;
+  --table-row-hover: color-mix(in srgb, var(--institutional-blue) 7%, var(--table-row-bg));
+  --table-divider: #dfe7f1;
+  --empty-bg: #f8fafc;
+  --empty-icon-bg: color-mix(in srgb, var(--institutional-blue) 12%, var(--surface-panel));
+  --empty-icon-text: var(--institutional-blue);
+  --state-success-bg: #ecfdf3;
+  --state-success-border: #86efac;
+  --state-success-text: #166534;
+  --state-warning-bg: #fffbeb;
+  --state-warning-border: #fcd34d;
+  --state-warning-text: #92400e;
+  --state-danger-bg: #fef2f2;
+  --state-danger-border: #fca5a5;
+  --state-danger-text: #991b1b;
+  --state-info-bg: #f4f7fb;
+  --state-info-border: color-mix(in srgb, var(--institutional-blue) 42%, var(--border-default));
+  --state-info-text: var(--institutional-blue);
+  --overlay-backdrop: rgba(15, 23, 42, .58);
+  --native-color-scheme: light;
+
+  --app-primary-dark: #071a3d;
+  --app-primary-deep: #0b2a5b;
+  --app-primary: var(--institutional-blue);
+  --app-primary-hover: var(--ion-color-primary-shade);
+  --app-primary-light: var(--institutional-blue);
+  --app-primary-soft: color-mix(in srgb, var(--institutional-blue) 12%, var(--surface-panel));
+  --app-background: var(--surface-page);
+  --app-surface: var(--surface-panel);
+  --app-text-primary: var(--text-strong);
+  --app-text-secondary: var(--text-soft);
+  --app-border: var(--border-default);
+  --app-success: #{$success};
+  --app-warning: #{$warning};
+  --app-danger: #{$danger};
+  --app-info: var(--institutional-blue);
+
+  @include ionic-color(primary, $institutional-blue, #ffffff, var(--institutional-blue));
+  @include ionic-color(secondary, #475569, #ffffff);
+  @include ionic-color(tertiary, #64748b, #ffffff);
+  @include ionic-color(success, $success, #000000, var(--app-success));
+  @include ionic-color(warning, $warning, #000000, var(--app-warning));
+  @include ionic-color(danger, $danger, #ffffff, var(--app-danger));
+  @include ionic-color(medium, #94a3b8, #000000);
+  @include ionic-color(light, #f8fafc, #0f172a);
+  @include ionic-color(dark, #1e293b, #ffffff);
+
+  --ion-background-color: var(--surface-page);
+  --ion-background-color-rgb: 244, 247, 251;
+  --ion-text-color: var(--text-strong);
+  --ion-text-color-rgb: 23, 32, 51;
+  --ion-border-color: var(--border-default);
+  --ion-item-background: var(--surface-panel);
+  --ion-item-color: var(--text-default);
+  --ion-toolbar-background: var(--bg-topbar);
+  --ion-toolbar-color: var(--text-strong);
+
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --sidebar-bg-start: #0f172a;
+  --sidebar-bg-end: #1e293b;
+  --sidebar-border: #334155;
+  --sidebar-text-strong: #f8fafc;
+  --sidebar-text: #a8b5c8;
+  --sidebar-icon: #8291a8;
+  --sidebar-section-text: #78879d;
+  /* La navegación conserva su identidad visual en ambos temas. */
+  --sidebar-primary-dark: #071a3d;
+  --sidebar-primary-deep: #0b2a5b;
+  --sidebar-primary: var(--institutional-blue);
+  --sidebar-primary-light: var(--institutional-blue);
+  --topbar-height: 64px;
+  --card-radius: 14px;
+  --card-shadow: 0 8px 24px rgba(15, 42, 91, 0.07);
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --ion-font-family: var(--font-family);
+  --font-family-code: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  /* La preferencia existente usa una raíz de 14 px; rem conserva su ampliación. */
+  --font-size-page-min: 1.714286rem; /* 24 px */
+  --font-size-page-max: 2rem; /* 28 px */
+  --font-size-page: clamp(var(--font-size-page-min), calc(1.428571rem + .5vw), var(--font-size-page-max));
+  --font-size-section-min: 1.142857rem; /* 16 px */
+  --font-size-section-max: 1.285714rem; /* 18 px */
+  --font-size-section: clamp(var(--font-size-section-min), calc(1rem + .25vw), var(--font-size-section-max));
+  --font-size-body: 1rem; /* 14 px */
+  --font-size-control-mobile: max(16px, var(--font-size-body)); /* Evita el zoom de campos en iOS. */
+  --font-size-compact: .928571rem; /* 13 px */
+  --font-size-label: .857143rem; /* 12 px */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-body: 1.5;
+  --line-height-heading: 1.25;
+  --line-height-control: 1.4;
+
+  --bg-page: var(--surface-page);
+  --bg-surface: var(--surface-panel);
+  --bg-sidebar: var(--app-primary-dark);
+  --bg-topbar: #ffffff;
+  --text-primary: var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-muted: var(--text-muted-accessible);
+  --border-color: var(--border-default);
+  --border-color-light: var(--border-subtle);
+  --hover-bg: var(--surface-hover);
+  --input-bg: var(--control-bg);
+  --scrollbar-thumb: #cbd5e1;
+}
+
+[data-theme="dark"] {
+  --surface-page: #080f1d;
+  --surface-panel: #111b2d;
+  --surface-raised: #162237;
+  --surface-subtle: #0d1728;
+  --surface-overlay: #162237;
+  --surface-hover: #1d2a40;
+  --surface-selected: #172a52;
+  --text-strong: #f8fafc;
+  --text-default: #d8e1ed;
+  --text-soft: #bdcada;
+  --text-muted-accessible: #9eafc4;
+  --text-inverse: #08101e;
+  --text-link: #ffffff;
+  --border-default: #33445e;
+  --border-subtle: #24334a;
+  --border-strong: #60728c;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.24);
+  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.48);
+  --control-bg: #0d1728;
+  --control-bg-hover: #162237;
+  --control-text: #f1f5f9;
+  --control-placeholder: #9eafc4;
+  --control-border: #465a76;
+  --control-focus-border: var(--institutional-blue);
+  --focus-ring: var(--institutional-blue);
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--institutional-blue) 42%, transparent);
+  --table-header-bg: #17243a;
+  --table-header-text: #c8d5e5;
+  --table-row-bg: #111b2d;
+  --table-row-hover: #1a2940;
+  --table-divider: #2b3b54;
+  --empty-bg: #0d1728;
+  --empty-icon-bg: #172a52;
+  --empty-icon-text: #ffffff;
+  --state-success-bg: #0f2d24;
+  --state-success-border: #257a55;
+  --state-success-text: #86efac;
+  --state-warning-bg: #35260f;
+  --state-warning-border: #8a621e;
+  --state-warning-text: #fcd34d;
+  --state-danger-bg: #35171d;
+  --state-danger-border: #8c3445;
+  --state-danger-text: #fda4af;
+  --state-info-bg: #13284a;
+  --state-info-border: #315b94;
+  --state-info-text: #ffffff;
+  --overlay-backdrop: rgba(0, 0, 0, .72);
+  --native-color-scheme: dark;
+  --app-primary-dark: #f1f5f9;
+  --app-primary-deep: #cbd5e1;
+  --app-primary-soft: #172554;
+  --app-background: var(--surface-page);
+  --app-surface: var(--surface-panel);
+  --app-text-primary: var(--text-strong);
+  --app-text-secondary: var(--text-soft);
+  --app-border: var(--border-default);
+  --bg-page: var(--surface-page);
+  --bg-surface: var(--surface-panel);
+  --bg-sidebar: #101a2c;
+  --bg-topbar: #101a2c;
+  --text-primary: var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-muted: var(--text-muted-accessible);
+  --border-color: var(--border-default);
+  --border-color-light: var(--border-subtle);
+  --hover-bg: var(--surface-hover);
+  --input-bg: var(--control-bg);
+  --scrollbar-thumb: #40516a;
+  --card-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  @include ionic-color(light, #1e293b, #ffffff);
+  @include ionic-color(dark, #f1f5f9, #0f172a);
+  --ion-background-color-rgb: 8, 15, 29;
+  --ion-text-color-rgb: 248, 250, 252;
+  --sidebar-primary-dark: #071a3d;
+  --sidebar-primary-deep: #0b2a5b;
+  --sidebar-primary: var(--institutional-blue);
+  --sidebar-primary-light: var(--institutional-blue);
+}
+
+[data-high-contrast="true"] {
+  --text-primary: #000000;
+  --text-secondary: #1a1a1a;
+  --border-color: #000000;
+}
+
+[data-theme="dark"][data-high-contrast="true"] {
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --border-color: #ffffff;
+}
+
+[data-no-animations="true"] *,
+[data-no-animations="true"] *::before,
+[data-no-animations="true"] *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}

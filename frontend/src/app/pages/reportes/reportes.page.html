@@ -1,0 +1,713 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <div class="reportes-content">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="header-row">
+          <div>
+            <p class="page-kicker">ANÁLISIS INSTITUCIONAL</p>
+            <h1 class="page-title">Centro de informes</h1>
+            <p class="page-desc">Genera resúmenes con datos reales, consulta su historial y programa envíos recurrentes.
+            </p>
+          </div>
+          <div class="header-actions">
+            <button class="action-btn" (click)="cambiarVistaCentro('historial')">
+              <ion-icon name="time-outline" /> Ver historial
+            </button>
+            @if (puedeProgramar()) {
+            <button class="btn-primary" (click)="openProgramarModal()">
+              <ion-icon name="calendar-outline" /> Programar informe
+            </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <nav class="centro-tabs" aria-label="Secciones del centro de informes">
+        <button class="centro-tab" [class.active]="vistaCentro() === 'plantillas'"
+          (click)="cambiarVistaCentro('plantillas')">
+          <ion-icon name="grid-outline" /> Plantillas
+        </button>
+        <button class="centro-tab" [class.active]="vistaCentro() === 'historial'"
+          (click)="cambiarVistaCentro('historial')">
+          <ion-icon name="time-outline" /> Historial <span class="centro-tab-count">{{ totalReportes() }}</span>
+        </button>
+        @if (puedeProgramar()) {
+        <button class="centro-tab" [class.active]="vistaCentro() === 'programaciones'"
+          (click)="cambiarVistaCentro('programaciones')">
+          <ion-icon name="calendar-outline" /> Programaciones <span class="centro-tab-count">{{ programaciones().length
+            }}</span>
+        </button>
+        }
+      </nav>
+
+      @if (vistaCentro() === 'plantillas') {
+      <section class="template-panel" aria-labelledby="templates-title">
+        <div class="template-panel-heading">
+          <div>
+            <p class="section-kicker">GENERACIÓN GUIADA</p>
+            <h2 id="templates-title">¿Qué informe necesitas?</h2>
+            <p>Elige una plantilla, define el período y obtén una instantánea descargable con la información actual.</p>
+          </div>
+          <div class="template-info">
+            <ion-icon name="shield-checkmark-outline" />
+            Datos del sistema
+          </div>
+        </div>
+
+        @if (errorPlantillas()) { <div class="reportes-empty-state" role="alert"><p>No se pudieron cargar las plantillas.</p><button type="button" class="btn-secondary" (click)="loadPlantillas()">Reintentar</button></div> }
+        <div class="template-grid">
+          @for (plantilla of plantillas(); track plantilla.modulo) {
+          <article class="template-card">
+            <div class="template-card-icon">
+              <ion-icon
+                [name]="plantilla.modulo === 'Reuniones' ? 'calendar-outline' : plantilla.modulo === 'Actas' ? 'document-text-outline' : plantilla.modulo === 'Asistencia' ? 'people-outline' : 'checkbox-outline'" />
+            </div>
+            <div class="template-card-copy">
+              <span class="template-module">{{ plantilla.modulo }}</span>
+              <h3>{{ plantilla.nombre }}</h3>
+              <p>{{ plantilla.descripcion }}</p>
+            </div>
+            @if (authService.hasPermission('Reporte', 'Crear')) { <button class="template-action" type="button" (click)="abrirPlantilla(plantilla)">
+              Generar <ion-icon name="arrow-forward-outline" />
+            </button> }
+          </article>
+          } @empty {
+          <div class="reportes-empty-state">
+            <ion-icon name="document-text-outline" />
+            <h3>Las plantillas no están disponibles</h3>
+            <p>Actualiza la página cuando el servicio de informes esté disponible.</p>
+          </div>
+          }
+        </div>
+      </section>
+      }
+
+      @if (vistaCentro() === 'programaciones') {
+      <section class="schedules-panel" aria-labelledby="schedules-title">
+        @if (errorProgramaciones()) { <div class="reportes-empty-state" role="alert"><p>No se pudieron actualizar las programaciones.</p><button type="button" class="btn-secondary" (click)="loadProgramaciones()">Reintentar</button></div> }
+        <div class="schedules-header">
+          <div>
+            <p class="section-kicker">EJECUCIÓN AUTOMÁTICA</p>
+            <h2 id="schedules-title">Informes programados</h2>
+            <p>Se generarán con los datos vigentes del período y se enviarán al destinatario seleccionado.</p>
+          </div>
+          <button class="btn-primary" type="button" (click)="openProgramarModal()">
+            <ion-icon name="add-outline" /> Nueva programación
+          </button>
+        </div>
+        @if (programaciones().length > 0) {
+        <div class="schedules-grid">
+          @for (item of programaciones(); track item.id) {
+          <article class="schedule-card" [class.schedule-paused]="!item.activo">
+            <div class="schedule-identity">
+              <span class="schedule-icon" aria-hidden="true"><ion-icon name="calendar-outline" /></span>
+              <div>
+                <div class="schedule-title-row">
+                  <strong>{{ item.nombre }}</strong>
+                  <span class="schedule-status" [class.is-paused]="!item.activo">
+                    <i aria-hidden="true"></i>{{ item.activo ? 'Activa' : 'Pausada' }}
+                  </span>
+                </div>
+                <span class="schedule-module"><ion-icon name="layers-outline" aria-hidden="true" /> {{ item.modulo
+                  }}</span>
+              </div>
+            </div>
+            <div class="schedule-metadata">
+              <div class="schedule-meta-item">
+                <span>Frecuencia</span>
+                <strong>{{ item.periodicidad | titlecase }}</strong>
+              </div>
+              <div class="schedule-meta-item schedule-next-run">
+                <span>Próxima ejecución</span>
+                <strong><ion-icon name="time-outline" aria-hidden="true" /> {{ item.proximaEjecucion | date:'dd MMM yyyy
+                  · HH:mm' }}</strong>
+              </div>
+              @if (item.ultimoEstado !== 'PENDIENTE') {
+              <div class="schedule-meta-item schedule-result" [class.schedule-error]="item.ultimoEstado === 'FALLIDO'">
+                <span>Último resultado</span>
+                <strong>{{ item.ultimoEstado | titlecase }}</strong>
+              </div>
+              }
+            </div>
+            <div class="schedule-actions">
+              <button class="action-btn" (click)="cambiarEstadoProgramacion(item)"
+                [attr.aria-label]="item.activo ? 'Pausar programación' : 'Reanudar programación'">
+                <ion-icon name="time-outline" /> {{ item.activo ? 'Pausar' : 'Reanudar' }}
+              </button>
+              <button class="btn-icon danger" title="Eliminar programación" aria-label="Eliminar programación"
+                (click)="eliminarProgramacion(item)">
+                <ion-icon name="trash-outline" />
+              </button>
+            </div>
+          </article>
+          }
+        </div>
+        } @else {
+        <div class="reportes-empty-state compact">
+          <ion-icon name="calendar-outline" />
+          <h3>Aún no hay informes programados</h3>
+          <p>Crea una programación para recibir automáticamente una plantilla con datos actualizados.</p>
+          <button class="action-btn" type="button" (click)="openProgramarModal()">Crear programación</button>
+        </div>
+        }
+      </section>
+      }
+
+      @if (vistaCentro() === 'historial') {
+      <!-- FILTROS -->
+      <div class="filtros-row">
+        <div class="filtro-search-wrapper" style="flex:1;">
+          <ion-icon name="search-outline" class="search-icon" />
+          <input type="text" class="filtro-input" placeholder="Buscar por nombre del reporte..."
+            [value]="filtroSearch()" (input)="filtroSearch.set($any($event.target).value); currentPage.set(1)" />
+        </div>
+        <select class="filtro-select" [value]="filtroModulo()"
+          (change)="filtroModulo.set($any($event.target).value); onFilterChange()">
+          <option value="Todos">Módulo</option>
+          <option>Reuniones</option>
+          <option>Actas</option>
+          <option>Asistencia</option>
+          <option>Actividades</option>
+          <option>Inventario</option>
+          <option>Tareas</option>
+          <option>Documentos</option>
+          <option>Usuarios</option>
+        </select>
+        <select class="filtro-select" [value]="filtroTipo()"
+          (change)="filtroTipo.set($any($event.target).value); onFilterChange()">
+          <option value="Todos">Tipo</option>
+          <option>Analítico</option>
+          <option>Ejecutivo</option>
+          <option>Detallado</option>
+        </select>
+        <select class="filtro-select" [value]="filtroFormato()"
+          (change)="filtroFormato.set($any($event.target).value); onFilterChange()">
+          <option value="Todos">Formato</option>
+          <option>PDF</option>
+          <option>Excel</option>
+          <option>Word</option>
+          <option>CSV</option>
+        </select>
+        <button class="btn-filtros" (click)="limpiarFiltros()">
+          <ion-icon name="filter-outline" />
+          Limpiar
+        </button>
+      </div>
+
+      <!-- CONTENT GRID: 70/30 -->
+      <div class="content-grid" [class.has-detail]="selectedReporte() !== null">
+        <!-- LEFT: TABLE -->
+        <div class="table-section">
+          @if (errorReportes()) { <div class="reportes-empty-state" role="alert"><p>No se pudo actualizar el historial. Se conservan los datos cargados.</p><button type="button" class="btn-secondary" (click)="loadReportes()">Reintentar</button></div> }
+          <div class="table-header">
+            <div class="history-header-copy">
+              <p class="section-kicker">ARCHIVO DE CONSULTA</p>
+              <div class="history-title-line">
+                <h2>Historial de informes</h2>
+                <span class="count-badge">{{totalCount()}} {{ totalCount() === 1 ? 'informe' : 'informes' }}</span>
+              </div>
+            </div>
+            <button class="action-btn" type="button" (click)="descargarTodo()"><ion-icon name="download-outline" />
+              Exportar listado</button>
+          </div>
+          <div class="table-container" (click)="closeMenu()">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre del Reporte</th>
+                  <th>Módulo</th>
+                  <th>Fecha</th>
+                  <th>Formato</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of paginatedReportes(); track item.id) {
+                <tr (click)="selectReporte(item)" [class.selected]="selectedReporte()?.id === item.id"
+                  class="clickable-row">
+                  <td class="cell-name">
+                    <div class="report-document">
+                      <span class="report-document-icon" aria-hidden="true"><ion-icon
+                          name="document-text-outline" /></span>
+                      <div class="reporte-block">
+                        <span class="reporte-titulo">{{item.nombre}}</span>
+                        <span class="reporte-desc">Disponible para consulta</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="modulo-badge">{{item.modulo}}</span></td>
+                  <td class="cell-date"><ion-icon name="calendar-outline" aria-hidden="true" /><span>{{item.fecha |
+                      date:'dd/MM/yyyy'}}</span></td>
+                  <td><span class="formato-badge">{{item.formato}}</span></td>
+                  <td class="actions-cell" (click)="$event.stopPropagation()">
+                    <div class="menu-wrapper">
+                      <button class="btn-icon" type="button" title="Ver" aria-label="Ver reporte"
+                        (click)="selectReporte(item)">
+                        <ion-icon name="eye-outline" />
+                      </button>
+                      <button class="btn-icon" type="button" title="Más opciones" aria-label="Más opciones del reporte"
+                        (click)="toggleMenu(item.id)">
+                        <ion-icon name="ellipsis-vertical-outline" />
+                      </button>
+                      @if (openMenuId() === item.id) {
+                      <div class="context-menu">
+                        <button class="context-item" (click)="verDetalle(item)"><ion-icon name="eye-outline" /> Ver
+                          detalle</button>
+                        @if (authService.hasPermission('Reporte', 'Editar')) { <button class="context-item" (click)="editarReporte(item)"><ion-icon name="pencil-outline" />
+                          Editar</button> }
+                        <button class="context-item" (click)="descargarReporte(item, 'PDF')"><ion-icon
+                            name="download-outline" /> Descargar PDF</button>
+                        <button class="context-item" (click)="descargarReporte(item, 'CSV')"><ion-icon
+                            name="download-outline" /> Descargar CSV</button>
+                        <button class="context-item" (click)="compartirReporte(item)"><ion-icon name="share-outline" />
+                          Compartir</button>
+                        <div class="context-divider"></div>
+                        @if (puedeProgramar()) { <button class="context-item" (click)="openProgramarConDatos(item, 'semanal')"><ion-icon
+                            name="time-outline" /> Programar (Semanal)</button> }
+                        @if (puedeProgramar()) { <button class="context-item" (click)="openProgramarConDatos(item, 'mensual')"><ion-icon
+                            name="time-outline" /> Programar (Mensual)</button> }
+                        <div class="context-divider"></div>
+                        @if (authService.hasPermission('Reporte', 'Eliminar')) { <button class="context-item context-item-danger" (click)="eliminarReporte(item)"><ion-icon
+                            name="trash-outline" /> Eliminar</button> }
+                      </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+                } @empty {
+                <tr>
+                  <td colspan="5" class="empty-state">
+                    <div class="empty-content">
+                      <ion-icon name="bar-chart-outline" class="empty-icon" />
+                      <p>No se encontraron reportes</p>
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalPages().length > 1) {
+          <div class="pagination">
+            <button class="page-btn" type="button" aria-label="Página anterior" (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1" title="Página anterior">
+              <ion-icon name="chevron-back-outline" />
+            </button>
+            @for (p of totalPages(); track p) {
+            <button class="page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">{{p}}</button>
+            }
+            <button class="page-btn" type="button" aria-label="Página siguiente" (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() === totalPages().length" title="Página siguiente">
+              <ion-icon name="chevron-forward-outline" />
+            </button>
+          </div>
+          }
+
+        </div>
+
+        <!-- RIGHT: DETAIL -->
+        @if (selectedReporte(); as item) {
+        <div class="detail-section">
+          <div class="detail-card">
+            <div class="detail-header">
+              <button class="btn-close-detail" type="button" aria-label="Cerrar detalle del reporte"
+                (click)="closeDetail()" title="Cerrar detalle del reporte">
+                <ion-icon name="close-outline" />
+              </button>
+              <div class="detail-header-content">
+                <div class="detail-avatar">
+                  <ion-icon name="document-text-outline" />
+                </div>
+                <div class="detail-header-info">
+                  <h3 class="detail-title">{{item.nombre}}</h3>
+                  <div class="detail-badges">
+                    <span class="detail-badge badge-modulo">{{item.modulo}}</span>
+                    <span class="detail-badge badge-formato">{{item.formato}}</span>
+                    <span class="detail-badge badge-tipo">{{tipoLabel(item.tipo)}}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-body">
+              <div class="detail-row">
+                <span class="detail-label">Fecha</span>
+                <span class="detail-value">{{item.fecha | date:'dd/MM/yyyy'}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Generado por</span>
+                <span class="detail-value">{{item.generadoPor}}</span>
+              </div>
+              @if (item.descripcion) {
+              <div class="detail-desc-row">
+                <span class="detail-label">Descripción</span>
+                <p class="detail-desc-text">{{item.descripcion}}</p>
+              </div>
+              }
+            </div>
+
+            @if (archivos(item).length > 0) {
+            <div class="detail-files">
+              <div class="detail-files-header">
+                <ion-icon name="attach-outline" />
+                <span>Archivos adjuntos ({{archivos(item).length}})</span>
+              </div>
+              <div class="detail-files-list">
+                @for (ruta of archivos(item); track $index) {
+                <div class="detail-file-item">
+                  <ion-icon name="document-text-outline" class="detail-file-icon" />
+                  <span class="detail-file-name">{{archivoNombre(ruta)}}</span>
+                  <button class="detail-file-download" type="button" title="Descargar"
+                    aria-label="Descargar archivo del reporte" (click)="descargarArchivo(item, $index)">
+                    <ion-icon name="download-outline" />
+                  </button>
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <div class="detail-actions">
+              <button class="btn-detail-primary" (click)="descargarReporte(item)">
+                <ion-icon name="download-outline" /> Descargar informe
+              </button>
+              <button class="btn-detail-secondary" (click)="compartirReporte(item)">
+                <ion-icon name="share-outline" /> Compartir
+              </button>
+              @if (puedeProgramar()) { <button class="btn-detail-secondary" (click)="openProgramarConDatos(item)">
+                <ion-icon name="time-outline" /> Programar
+              </button> }
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+      }
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Generar desde plantilla -->
+<ion-modal [isOpen]="showPlantillaModal()" (didDismiss)="cerrarPlantilla()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Generar informe</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar generación de informe" (click)="cerrarPlantilla()"
+            title="Cerrar generación de informe">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    @if (plantillaSeleccionada(); as plantilla) {
+    <div class="modal-body template-modal-body">
+      <div class="template-modal-summary">
+        <div class="template-card-icon">
+          <ion-icon name="document-text-outline" />
+        </div>
+        <div>
+          <span class="template-module">{{ plantilla.modulo }}</span>
+          <h2>{{ plantilla.nombre }}</h2>
+          <p>{{ plantilla.descripcion }}</p>
+        </div>
+      </div>
+
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label class="modal-label" for="plantilla-desde">Desde</label>
+          <input id="plantilla-desde" class="modal-input" type="date" [value]="plantillaDesde()"
+            (input)="plantillaDesde.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="plantilla-hasta">Hasta</label>
+          <input id="plantilla-hasta" class="modal-input" type="date" [value]="plantillaHasta()"
+            (input)="plantillaHasta.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label" for="plantilla-formato">Formato de descarga</label>
+          <select id="plantilla-formato" class="modal-select" [value]="plantillaFormato()"
+            (change)="plantillaFormato.set($any($event.target).value)">
+            <option value="PDF">PDF</option>
+            <option value="CSV">CSV</option>
+          </select>
+          <span class="modal-field-help">El informe se guarda como una instantánea y quedará disponible en el
+            historial.</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" type="button" (click)="cerrarPlantilla()" [disabled]="generandoPlantilla()">
+          Cancelar
+        </button>
+        <button class="btn-primary" type="button" (click)="generarDesdePlantilla()"
+          [disabled]="generandoPlantilla() || !plantillaDesde() || !plantillaHasta()">
+          <ion-icon [name]="generandoPlantilla() ? 'hourglass-outline' : 'document-text-outline'" />
+          {{ generandoPlantilla() ? 'Generando…' : 'Generar informe' }}
+        </button>
+      </div>
+    </div>
+    }
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Generar Reporte -->
+<ion-modal [isOpen]="showGenerarModal()" [canDismiss]="!guardandoReporte()" (didDismiss)="closeGenerarModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>{{ editandoId() ? 'Editar Reporte' : 'Generar Reporte' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar generación de reporte" (click)="closeGenerarModal()"
+            title="Cerrar generación de reporte">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Nombre del Reporte</label>
+          <input type="text" class="modal-input" placeholder="Ej: Resumen de Asistencia" [value]="genNombre()"
+            (input)="genNombre.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Módulo</label>
+          <select class="modal-select" [value]="genModulo()" (change)="genModulo.set($any($event.target).value)">
+            <option value="Reuniones">Reuniones</option>
+            <option value="Actas">Actas</option>
+            <option value="Asistencia">Asistencia</option>
+            <option value="Actividades">Actividades</option>
+            <option value="Inventario">Inventario</option>
+            <option value="Tareas">Tareas</option>
+            <option value="Documentos">Documentos</option>
+            <option value="Usuarios">Usuarios</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Tipo</label>
+          <select class="modal-select" [value]="genTipo()" (change)="genTipo.set($any($event.target).value)">
+            <option value="ejecutivo">Ejecutivo</option>
+            <option value="analitico">Analítico</option>
+            <option value="detallado">Detallado</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Formato</label>
+          <select class="modal-select" [value]="genFormato()" (change)="genFormato.set($any($event.target).value)">
+            <option value="PDF">PDF</option>
+            <option value="Excel">Excel</option>
+            <option value="Word">Word</option>
+            <option value="CSV">CSV</option>
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Descripción</label>
+          <textarea class="modal-textarea" rows="3" placeholder="Describa el contenido del reporte..."
+            [value]="genDescripcion()" (input)="genDescripcion.set($any($event.target).value)"></textarea>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Archivo</label>
+          <div class="file-upload-wrapper">
+            <input type="file" #fileInputGenerar multiple (change)="onFileSelectedGenerar($event)"
+              accept=".pdf,.xlsx,.xls,.doc,.docx,.csv,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+              style="display:none" />
+            <button class="file-upload-btn" type="button" (click)="fileInputGenerar.click()">
+              <ion-icon name="document-attach-outline" /> Adjuntar archivo(s)
+            </button>
+            @if (genArchivos().length > 0) {
+            <div class="file-list">
+              @for (f of genArchivos(); track $index) {
+              <div class="file-item">
+                <ion-icon name="document-text-outline" />
+                <span class="file-name">{{ f.name }}</span>
+                <span class="file-size">({{ (f.size / 1024).toFixed(1) }} KB)</span>
+                <button class="file-remove" type="button" aria-label="Quitar archivo del reporte"
+                  (click)="eliminarArchivoGenerar($index)" title="Quitar archivo del reporte">
+                  <ion-icon name="close-outline" />
+                </button>
+              </div>
+              }
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeGenerarModal()">
+          <ion-icon name="close-outline" /> Cancelar
+        </button>
+        <button class="btn-primary" (click)="guardarReporte()" [disabled]="guardandoReporte()">
+          <ion-icon [name]="editandoId() ? 'save-outline' : 'add-outline'" /> {{ editandoId() ? 'Actualizar' : 'Guardar'
+          }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Programar Reporte -->
+<ion-modal [isOpen]="showProgramarModal()" [canDismiss]="!guardandoProgramacion()" (didDismiss)="closeProgramarModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Programar Reporte</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar programación de reporte" (click)="closeProgramarModal()"
+            title="Cerrar programación de reporte">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Nombre del Reporte</label>
+          <input type="text" class="modal-input" placeholder="Ej: Reporte Semanal de Asistencia" [value]="progNombre()"
+            (input)="progNombre.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Módulo</label>
+          <select class="modal-select" [value]="progModulo()" (change)="progModulo.set($any($event.target).value)">
+            <option value="Reuniones">Reuniones</option>
+            <option value="Actas">Actas</option>
+            <option value="Asistencia">Asistencia</option>
+            <option value="Tareas">Tareas</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Tipo</label>
+          <select class="modal-select" [value]="progTipo()" (change)="progTipo.set($any($event.target).value)">
+            <option value="ejecutivo">Ejecutivo</option>
+            <option value="analitico">Analítico</option>
+            <option value="detallado">Detallado</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Formato</label>
+          <select class="modal-select" [value]="progFormato()" (change)="progFormato.set($any($event.target).value)">
+            <option value="PDF">PDF</option>
+            <option value="CSV">CSV</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Periodicidad</label>
+          <select class="modal-select" [value]="progPeriodicidad()"
+            (change)="progPeriodicidad.set($any($event.target).value)">
+            <option value="diario">Diario</option>
+            <option value="semanal">Semanal</option>
+            <option value="mensual">Mensual</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Fecha de Inicio</label>
+          <input type="date" class="modal-input" [value]="progFechaInicio()"
+            (input)="progFechaInicio.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Hora</label>
+          <input type="time" class="modal-input" [value]="progHora()"
+            (input)="progHora.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Usuario destinatario</label>
+          <select class="modal-select" [value]="progDestinatarioId()"
+            (change)="progDestinatarioId.set($any($event.target).value)">
+            <option value="">Seleccione un usuario del sistema</option>
+            @for (usuario of usuariosDestinatarios(); track usuario.id) {
+            <option [value]="usuario.id">{{ usuario.nombre }} — {{ usuario.correo }}</option>
+            }
+          </select>
+          @if (destinatarioSeleccionado(); as destinatario) {
+          <span class="modal-field-help">El reporte se enviará a {{ destinatario.correo }}</span>
+          }
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Archivo</label>
+          <div class="file-upload-wrapper">
+            <input type="file" #fileInputProgramar multiple (change)="onFileSelectedProgramar($event)"
+              accept=".pdf,.xlsx,.xls,.doc,.docx,.csv,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+              style="display:none" />
+            <button class="file-upload-btn" type="button" (click)="fileInputProgramar.click()">
+              <ion-icon name="document-attach-outline" /> Adjuntar archivo(s)
+            </button>
+            @if (progArchivos().length > 0) {
+            <div class="file-list">
+              @for (f of progArchivos(); track $index) {
+              <div class="file-item">
+                <ion-icon name="document-text-outline" />
+                <span class="file-name">{{ f.name }}</span>
+                <span class="file-size">({{ (f.size / 1024).toFixed(1) }} KB)</span>
+                <button class="file-remove" type="button" aria-label="Quitar archivo programado"
+                  (click)="eliminarArchivoProgramar($index)" title="Quitar archivo programado">
+                  <ion-icon name="close-outline" />
+                </button>
+              </div>
+              }
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeProgramarModal()">
+          <ion-icon name="close-outline" /> Cancelar
+        </button>
+        <button class="btn-primary" (click)="programarReporte()" [disabled]="guardandoProgramacion()">
+          <ion-icon name="time-outline" /> Programar
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Compartir Reporte -->
+<ion-modal [isOpen]="showCompartirModal()" (didDismiss)="closeCompartirModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Compartir Reporte</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar envío de reporte" (click)="closeCompartirModal()"
+            title="Cerrar envío de reporte">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      @if (compartirItem(); as item) {
+      <div style="margin-bottom:12px; font-size:13px; color:#94a3b8;">
+        Compartir: <strong style="color:#e2e8f0;">{{item.nombre}}</strong>
+      </div>
+      }
+      <div class="modal-field">
+        <label class="modal-label">Correo electrónico del destinatario</label>
+        <p class="field-hint">Se abrirá tu aplicación de correo con un enlace al informe. El destinatario deberá iniciar sesión y tener permiso para consultarlo.</p>
+        <input class="modal-input" type="email" placeholder="correo@ejemplo.com" [value]="compartirEmail()"
+          (input)="compartirEmail.set($any($event.target).value)" />
+      </div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="btn-cancel" (click)="closeCompartirModal()">
+          <ion-icon name="close-outline" /> Cancelar
+        </button>
+        <button class="btn-primary" (click)="enviarCompartir()">
+          <ion-icon name="send-outline" /> Preparar correo
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

@@ -1,0 +1,81 @@
+<ion-card class="calendar-card">
+  <ion-card-header>
+    <div class="calendar-heading">
+      <div><ion-card-title>Calendario</ion-card-title><p>Agenda institucional y tus eventos personales</p></div>
+      <div class="calendar-actions">
+        <button type="button" class="new-event-button" (click)="openNewPersonalEvent()">+ Nuevo evento</button>
+      </div>
+    </div>
+  </ion-card-header>
+  <ion-card-content>
+    <div class="calendar-scroll">
+      <div #calendar class="fc-container"></div>
+    </div>
+  </ion-card-content>
+</ion-card>
+
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeModal()">&times;</button>
+      @if (selectedEvent(); as event) {
+        <h3>{{ event.title }}</h3>
+        <p><strong>Fecha:</strong> {{ formatDate(event.date) }}</p>
+        @if (!event.allDay) {
+          <p><strong>Hora:</strong> {{ event.date | date:'shortTime' }}</p>
+        }
+        <ion-chip [style.background]="typeColors[event.type] + '15'" [style.color]="typeColors[event.type]">
+          {{ eventTypeLabel(event) }}
+        </ion-chip>
+        @if (event.description) {
+          <p class="event-description">{{ event.description }}</p>
+        }
+        @if (event.personal) {
+          <div class="personal-event-actions">
+            <button type="button" class="edit-event-button" (click)="editSelectedPersonalEvent()">Editar</button>
+            <button type="button" class="delete-event-button" (click)="deleteSelectedPersonalEvent()">Eliminar</button>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}
+
+@if (showEditor()) {
+  <div class="modal-overlay" (click)="closeEditor()">
+    <div class="modal-content event-editor" (click)="$event.stopPropagation()">
+      <button type="button" class="modal-close" aria-label="Cerrar editor de evento" title="Cerrar" (click)="closeEditor()">&times;</button>
+      <h3>{{ editingPersonalEventId() ? 'Editar evento personal' : 'Nuevo evento personal' }}</h3>
+      <p class="editor-intro">Este evento solo se guarda en tu calendario personal.</p>
+      <label class="event-field">
+        <span>Título</span>
+        <input type="text" [value]="editorTitle()" (input)="editorTitle.set($any($event.target).value)" placeholder="Ej.: Cita médica" />
+      </label>
+      <div class="event-field-row">
+        <label class="event-field">
+          <span>Fecha</span>
+          <input type="date" [value]="editorDate()" (input)="editorDate.set($any($event.target).value)" />
+        </label>
+        @if (!editorAllDay()) {
+          <label class="event-field">
+            <span>Hora</span>
+            <input type="time" [value]="editorTime()" (input)="editorTime.set($any($event.target).value)" />
+          </label>
+        }
+      </div>
+      <label class="all-day-toggle">
+        <input type="checkbox" [checked]="editorAllDay()" (change)="editorAllDay.set($any($event.target).checked)" />
+        Todo el día
+      </label>
+      <label class="event-field">
+        <span>Descripción <small>(opcional)</small></span>
+        <textarea rows="3" [value]="editorDescription()" (input)="editorDescription.set($any($event.target).value)" placeholder="Agrega un detalle o recordatorio"></textarea>
+      </label>
+      @if (editorError()) { <p class="editor-error" role="alert">{{ editorError() }}</p> }
+      <div class="editor-actions">
+        <button type="button" class="cancel-event-button" (click)="closeEditor()">Cancelar</button>
+        <button type="button" class="save-event-button" (click)="savePersonalEvent()">Guardar evento</button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,20 +1,99 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" [scrollY]="false" class="login-content">
+  <div class="login-container">
+    <aside class="left-panel" aria-hidden="true"></aside>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
+    <main class="right-panel">
+      <div class="form-wrapper">
+        <div class="brand-header">
+          <div class="logo-container"><img src="assets/images/alerta-amber-logo-login.png" alt="Alerta Amber Panamá" class="brand-logo" width="220" height="136"></div>
+          <div class="welcome-copy">
+            <h1>Bienvenido a SIGAA</h1>
+            <p>Sistema Integral de Gestión Alerta Amber</p>
+          </div>
+        </div>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+        <section class="login-card" [attr.aria-busy]="isLoading">
+          <form *ngIf="!forgotPasswordMode()" (ngSubmit)="requires2fa() ? verify2fa() : loginFromForm()" novalidate>
+            <ng-container *ngIf="!requires2fa()">
+              <div class="custom-input-group" [class.has-error]="usernameInvalid()">
+                <label class="input-label" [htmlFor]="formId + '-login-username'">Nombre de usuario</label>
+                <ion-item lines="none" class="custom-item">
+                  <ion-icon slot="start" name="person-outline" aria-hidden="true"></ion-icon>
+                  <input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" #usernameInput [id]="formId + '-login-username'" type="text" aria-label="Nombre de usuario" [attr.aria-describedby]="usernameInvalid() ? formId + '-username-error' : null" autocomplete="username" placeholder="Ingrese su nombre de usuario" [(ngModel)]="username" (input)="username = $any($event.target).value" (blur)="usernameTouched = true" name="username" required>
+                </ion-item>
+                <p *ngIf="usernameInvalid()" [id]="formId + '-username-error'" class="field-error">El nombre de usuario es obligatorio.</p>
+              </div>
+
+              <div class="custom-input-group" [class.has-error]="passwordInvalid()">
+                <label class="input-label" [htmlFor]="formId + '-login-password'">Contraseña</label>
+                <ion-item lines="none" class="custom-item">
+                  <ion-icon slot="start" name="lock-closed-outline" aria-hidden="true"></ion-icon>
+                  <input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" #passwordInput [id]="formId + '-login-password'" [type]="showPassword() ? 'text' : 'password'" aria-label="Contraseña" [attr.aria-describedby]="passwordInvalid() ? formId + '-password-error' : null" autocomplete="current-password" placeholder="Ingrese su contraseña" [(ngModel)]="password" (input)="password = $any($event.target).value" (blur)="passwordTouched = true" name="password" required>
+                  <button type="button" slot="end" class="password-toggle" [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'" (click)="togglePassword()" [title]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"><ion-icon [name]="showPassword() ? 'eye-off-outline' : 'eye-outline'" aria-hidden="true"></ion-icon></button>
+                </ion-item>
+                <p *ngIf="passwordInvalid()" [id]="formId + '-password-error'" class="field-error">La contraseña es obligatoria.</p>
+              </div>
+
+              <div class="login-options">
+                <label class="remember-user" [htmlFor]="formId + '-remember-username'"><input [id]="formId + '-remember-username'" type="checkbox" [checked]="rememberUsername" (change)="setRememberUsername($any($event.target).checked)"> <span>Recordar usuario</span></label>
+                <button type="button" class="text-link" (click)="toggleForgotPassword()">¿Olvidaste tu contraseña?</button>
+              </div>
+              <button type="submit" class="btn-submit" [disabled]="isLoading"><ion-spinner *ngIf="isLoading" name="crescent" aria-hidden="true"></ion-spinner><span>{{ isLoading ? 'Ingresando…' : 'Iniciar sesión' }}</span></button>
+              <p class="login-assistance">Tus datos están protegidos. Si necesitas ayuda, contacta al administrador del sistema.</p>
+            </ng-container>
+
+            <ng-container *ngIf="requires2fa()">
+              <div class="form-heading"><ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon><h2>Verificación de acceso</h2></div>
+              <p class="form-help">Ingresa el código de verificación enviado a tu correo institucional.</p>
+              <div class="custom-input-group">
+                <label class="input-label" [htmlFor]="formId + '-access-code'">Código de verificación</label>
+                <ion-item lines="none" class="custom-item"><ion-icon slot="start" name="key-outline" aria-hidden="true"></ion-icon><input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" [id]="formId + '-access-code'" type="text" aria-label="Código de verificación" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de 6 dígitos" [(ngModel)]="code" name="code" maxlength="6" required></ion-item>
+              </div>
+              <button type="submit" class="btn-submit" [disabled]="isLoading"><ion-spinner *ngIf="isLoading" name="crescent" aria-hidden="true"></ion-spinner><span>{{ isLoading ? 'Verificando…' : 'Verificar código' }}</span></button>
+            </ng-container>
+          </form>
+
+          <form *ngIf="forgotPasswordMode() && resetStep() === 'request'" (ngSubmit)="sendResetCode()" novalidate>
+            <div class="form-heading"><ion-icon name="mail-outline" aria-hidden="true"></ion-icon><h2>Recuperar contraseña</h2></div>
+            <p class="form-help">Ingresa tu correo institucional. Si está registrado, recibirás un código temporal de verificación.</p>
+            <div class="custom-input-group">
+              <label class="input-label" [htmlFor]="formId + '-recovery-email'">Correo electrónico</label>
+              <ion-item lines="none" class="custom-item"><ion-icon slot="start" name="mail-outline" aria-hidden="true"></ion-icon><input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" [id]="formId + '-recovery-email'" type="email" aria-label="Correo electrónico para recuperación" autocomplete="email" placeholder="correo@ejemplo.com" [(ngModel)]="forgotPasswordEmail" name="forgotEmail" required></ion-item>
+            </div>
+            <button type="submit" class="btn-submit" [disabled]="isLoading"><ion-spinner *ngIf="isLoading" name="crescent" aria-hidden="true"></ion-spinner><span>{{ isLoading ? 'Enviando…' : 'Enviar código' }}</span></button>
+            <div class="back-to-login"><button type="button" class="text-link" (click)="toggleForgotPassword()">Volver al inicio de sesión</button></div>
+          </form>
+
+          <form *ngIf="forgotPasswordMode() && resetStep() === 'verify'" (ngSubmit)="verifyResetCode()" novalidate>
+            <div class="form-heading"><ion-icon name="key-outline" aria-hidden="true"></ion-icon><h2>Verificar código</h2></div>
+            <p class="form-help">Revisa tu correo e ingresa el código temporal de 6 dígitos.</p>
+            <div class="custom-input-group">
+              <label class="input-label" [htmlFor]="formId + '-recovery-code'">Código de verificación</label>
+              <ion-item lines="none" class="custom-item"><ion-icon slot="start" name="key-outline" aria-hidden="true"></ion-icon><input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" [id]="formId + '-recovery-code'" type="text" aria-label="Código de recuperación" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" [(ngModel)]="resetCode" (input)="sanitizeResetCode()" name="resetCode" maxlength="6" required></ion-item>
+            </div>
+            <button type="submit" class="btn-submit" [disabled]="isLoading"><ion-spinner *ngIf="isLoading" name="crescent" aria-hidden="true"></ion-spinner><span>{{ isLoading ? 'Verificando…' : 'Verificar código' }}</span></button>
+            <div class="recovery-actions"><button type="button" class="text-link" [disabled]="resendSeconds() > 0 || isLoading" (click)="resendResetCode()">{{ resendSeconds() > 0 ? 'Reenviar código (' + resendSeconds() + ' s)' : 'Reenviar código' }}</button><button type="button" class="text-link" (click)="changeResetEmail()">Cambiar correo</button></div>
+          </form>
+
+          <form *ngIf="forgotPasswordMode() && resetStep() === 'password'" (ngSubmit)="resetPassword()" novalidate>
+            <div class="form-heading"><ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon><h2>Crear nueva contraseña</h2></div>
+            <p class="form-help">Usa al menos 8 caracteres, con mayúscula, minúscula, número y carácter especial.</p>
+            <div class="custom-input-group">
+              <label class="input-label" [htmlFor]="formId + '-new-password'">Nueva contraseña</label>
+              <ion-item lines="none" class="custom-item"><ion-icon slot="start" name="lock-closed-outline" aria-hidden="true"></ion-icon><input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" [id]="formId + '-new-password'" [type]="showResetPassword() ? 'text' : 'password'" aria-label="Nueva contraseña" autocomplete="new-password" [(ngModel)]="newPassword" name="newPassword" required><button type="button" slot="end" class="password-toggle" [attr.aria-label]="showResetPassword() ? 'Ocultar nueva contraseña' : 'Mostrar nueva contraseña'" (click)="toggleResetPassword()" [title]="showResetPassword() ? 'Ocultar nueva contraseña' : 'Mostrar nueva contraseña'"><ion-icon [name]="showResetPassword() ? 'eye-off-outline' : 'eye-outline'" aria-hidden="true"></ion-icon></button></ion-item>
+            </div>
+            <ul class="password-requirements" aria-label="Requisitos de contraseña"><li [class.met]="newPassword.length >= 8">Mínimo 8 caracteres</li><li [class.met]="newPassword.match('[A-Z]')">Una mayúscula</li><li [class.met]="newPassword.match('[a-z]')">Una minúscula</li><li [class.met]="newPassword.match('[0-9]')">Un número</li><li [class.met]="isPasswordReady()">Un carácter especial y sin espacios externos</li></ul>
+            <div class="custom-input-group">
+              <label class="input-label" [htmlFor]="formId + '-confirm-password'">Confirmar contraseña</label>
+              <ion-item lines="none" class="custom-item"><ion-icon slot="start" name="lock-closed-outline" aria-hidden="true"></ion-icon><input class="auth-input native-input" autocapitalize="off" autocorrect="off" [spellcheck]="false" [id]="formId + '-confirm-password'" [type]="showResetConfirmation() ? 'text' : 'password'" aria-label="Confirmar contraseña" autocomplete="new-password" [(ngModel)]="confirmPassword" name="confirmPassword" required><button type="button" slot="end" class="password-toggle" [attr.aria-label]="showResetConfirmation() ? 'Ocultar confirmación de contraseña' : 'Mostrar confirmación de contraseña'" (click)="toggleResetConfirmation()" [title]="showResetConfirmation() ? 'Ocultar confirmación de contraseña' : 'Mostrar confirmación de contraseña'"><ion-icon [name]="showResetConfirmation() ? 'eye-off-outline' : 'eye-outline'" aria-hidden="true"></ion-icon></button></ion-item>
+            </div>
+            <button type="submit" class="btn-submit" [disabled]="isLoading"><ion-spinner *ngIf="isLoading" name="crescent" aria-hidden="true"></ion-spinner><span>{{ isLoading ? 'Actualizando…' : 'Actualizar contraseña' }}</span></button>
+          </form>
+
+          <div *ngIf="forgotPasswordMode() && resetStep() === 'success'" class="success-panel"><ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon><h2>Contraseña actualizada</h2><p>Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.</p><button type="button" class="btn-submit" (click)="toggleForgotPassword()">Volver a iniciar sesión</button></div>
+          <div *ngIf="message" class="message" [class.error]="messageType === 'error'" [class.success]="messageType === 'success'" [attr.role]="messageType === 'error' ? 'alert' : 'status'" aria-live="polite" aria-atomic="true"><ion-icon *ngIf="messageType === 'error'" name="alert-circle-outline" aria-hidden="true"></ion-icon>{{ message }}</div>
+        </section>
+      </div>
+    </main>
   </div>
 </ion-content>

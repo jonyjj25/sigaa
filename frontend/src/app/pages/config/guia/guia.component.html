@@ -1,0 +1,30 @@
+<section class="guide-page">
+  <header class="guide-hero">
+    <div class="hero-icon"><ion-icon name="rocket-outline" /></div>
+    <div><p class="eyebrow">CENTRO DE AYUDA</p><h1>¿Cómo podemos ayudarte?</h1><p>Encuentra instrucciones sencillas para realizar tus tareas en SIGAA.</p></div>
+  </header>
+
+  <label class="search-box"><ion-icon name="search-outline" /><input [(ngModel)]="busqueda" placeholder="Busca: crear una reunión, firmar un acta, subir un documento…" aria-label="Buscar en la guía" /></label>
+
+  <div class="guide-intro"><ion-icon name="checkmark-circle-outline" /><span>La guía muestra únicamente las opciones disponibles para tu rol.</span></div>
+
+  <div class="guide-list">
+    @for (seccion of filtradas(); track seccion.id) {
+      <article class="guide-card" [class.open]="seccion.abierta">
+        <button class="guide-heading" (click)="toggle(seccion.id)" [attr.aria-expanded]="seccion.abierta">
+          <span class="section-icon"><ion-icon [name]="seccion.icono" /></span>
+          <span class="heading-copy"><strong>{{ seccion.titulo }}</strong><small>{{ seccion.resumen }}</small></span>
+          <ion-icon class="chevron" [name]="seccion.abierta ? 'chevron-down-outline' : 'chevron-forward-outline'" />
+        </button>
+        @if (seccion.abierta) {
+          <div class="guide-content">
+            <h2>Pasos rápidos</h2>
+            <ol>@for (paso of seccion.pasos; track $index) {<li>{{ paso }}</li>}</ol>
+            @if (seccion.consejo) {<p class="tip"><b>Consejo:</b> {{ seccion.consejo }}</p>}
+            <a class="open-module" [routerLink]="seccion.ruta">Abrir {{ seccion.titulo }} <ion-icon name="arrow-forward-outline" /></a>
+          </div>
+        }
+      </article>
+    } @empty {<div class="empty"><ion-icon name="search-outline" /><h2>No encontramos resultados</h2><p>Prueba con otra palabra, por ejemplo: “tarea”, “reunión” o “documento”.</p></div>}
+  </div>
+</section>

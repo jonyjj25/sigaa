@@ -1,0 +1,11 @@
+route:
+  receiver: operacion-local
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+# Las alertas quedan visibles en Alertmanager. Antes de producción, sustituya
+# este receptor por correo, Teams, Slack o el webhook institucional autorizado.
+receivers:
+  - name: operacion-local

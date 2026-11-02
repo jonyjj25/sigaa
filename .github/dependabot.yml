@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend/sigaa-api
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: America/Panama
+    open-pull-requests-limit: 5
+    groups:
+      maven-non-major:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:15"
+      timezone: America/Panama
+    open-pull-requests-limit: 5
+    groups:
+      npm-non-major:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gradle
+    directory: /frontend/android
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:30"
+      timezone: America/Panama
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:45"
+      timezone: America/Panama
+    open-pull-requests-limit: 5

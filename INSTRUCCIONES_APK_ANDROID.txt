@@ -1,0 +1,141 @@
+SIGAA - INSTRUCCIONES PARA GENERAR Y DISTRIBUIR EL APK ANDROID
+================================================================
+
+La aplicación Android usa Capacitor y se comunica con la misma API y base de
+datos de SIGAA. No existe una base de datos separada para el APK.
+
+Actualizado el 1/11/2026: versión 1.0.8 (versionCode 9), Capacitor 8.6.0.
+La release todavía necesita dominio HTTPS y keystore institucionales.
+No distribuir los APK de depuración históricos ni los de verificación.
+Guía completa: docs/GUIA_SERVIDOR_Y_MANTENIMIENTO_2026-11-01.md.
+
+1. PREPARAR EL SERVIDOR PRIVADO
+--------------------------------
+
+1. Desplegar un commit o etiqueta aprobados con las correcciones y CI validada.
+2. Configurar las variables de entorno del backend, incluyendo base de datos,
+   JWT y demás secretos institucionales.
+3. Confirmar que la base fue instalada con `backend/sigaa-api/src/main/resources/db/schema.sql` e iniciar el backend.
+   CORS debe incluir el dominio web institucional y https://localhost para Android.
+4. Publicar la API mediante un dominio HTTPS privado accesible por los
+   teléfonos, por ejemplo:
+
+   https://sigaa.institucion.local
+
+5. Verificar que el firewall y la red permitan a los dispositivos Android
+   acceder al servidor. No usar localhost como URL de API del APK.
+
+2. CONFIGURAR LA URL DEL APK
+----------------------------
+
+La URL de distribución no se guarda en Git. Configurarla en la terminal antes
+de compilar (PowerShell):
+
+$env:SIGAA_ANDROID_API_URL = 'https://sigaa.institucion.local'
+
+El comando npm run build:android valida la URL y rechaza HTTP. Para una prueba
+local explícita puede usarse SIGAA_ANDROID_ALLOW_HTTP=true con la URL del PC:
+
+$env:SIGAA_ANDROID_API_URL = 'http://IP_DEL_PC:8080'
+$env:SIGAA_ANDROID_ALLOW_HTTP = 'true'
+
+Ambas compilaciones Android usan la URL generada por configure:android; no hay
+una IP fija en el código. La excepción HTTP se genera solo para la variante
+debug y se limita al host de esa API. Para distribución, use HTTPS y quite
+SIGAA_ANDROID_ALLOW_HTTP del entorno.
+
+3. REQUISITOS DE COMPILACIÓN
+----------------------------
+
+- Node.js 22.12 o superior de la rama 22.x, o Node.js 24.x.
+- Android Studio.
+- Android SDK Platform 36.
+- JDK 21.
+
+Capacitor 8 requiere JDK 21 para compilar Android. No usar JDK 17 ni JDK 25
+para el comando de Gradle de este proyecto.
+
+4. GENERAR EL APK DE DEPURACIÓN
+-------------------------------
+
+Abrir una terminal nueva que use JDK 21 y ejecutar:
+
+cd frontend
+npm ci
+npm run sync:android
+cd android
+.\gradlew.bat assembleDebug
+
+El APK resultante estará en:
+
+frontend/android/app/build/outputs/apk/debug/app-debug.apk
+
+También se puede ejecutar npm run android:debug desde frontend, siempre que
+la terminal tenga JDK 21 configurado.
+
+5. INSTALAR Y PROBAR
+--------------------
+
+1. Copiar app-debug.apk al teléfono Android.
+2. Autorizar la instalación desde la fuente usada para transferir el archivo
+   si Android lo solicita.
+3. Instalar el APK.
+4. Abrir SIGAA e iniciar sesión con una cuenta de prueba de preproducción.
+5. Verificar inicio de sesión, módulos autorizados, tareas, reuniones,
+   notificaciones, documentos y geolocalización.
+
+6. DISTRIBUCIÓN FINAL
+---------------------
+
+El APK de depuración sirve para pruebas internas. Para distribución se exige
+dominio HTTPS real, ninguna excepción HTTP y un keystore institucional.
+Crear la clave en custodia con ops/scripts/New-AndroidSigningKey.ps1 o keytool;
+no guardarla en Git ni en el servidor como única copia.
+
+Desde frontend, con JDK 21 y estas variables cargadas por un gestor de secretos:
+SIGAA_ANDROID_API_URL, SIGAA_ANDROID_KEYSTORE, SIGAA_ANDROID_STORE_PASSWORD,
+SIGAA_ANDROID_KEY_ALIAS y SIGAA_ANDROID_KEY_PASSWORD, ejecutar:
+
+npm.cmd run android:release
+
+La orden compila y sincroniza los recursos, verifica su origen y genera una
+release firmada en android/app/build/outputs/apk/release/app-release.apk.
+Gradle rechaza claves faltantes, mixed content y recursos de otra compilación.
+Verificar la firma con apksigner y probar VPN, TLS, roles, logout, archivos y
+segundo factor en teléfonos físicos antes de distribuir por el canal institucional.
+
+7. ACTUALIZAR EL APK EN EL FUTURO
+--------------------------------
+
+Cada vez que se modifique el frontend:
+
+cd frontend
+npm run sync:android
+cd android
+.\gradlew.bat assembleDebug
+
+La sincronización vuelve a copiar la versión web actual al proyecto Android.
+El backend y la base de datos siguen siendo los mismos para navegador y APK.
+Para actualizar instalaciones institucionales, aumentar versionCode y ejecutar
+npm.cmd run android:release conservando el keystore de firma institucional.
+
+8. APLICACIÓN IOS
+-----------------
+
+SIGAA también incluye el proyecto nativo iOS en frontend/ios. Este reutiliza
+el mismo frontend, API y base de datos, pero se debe compilar y firmar en una
+Mac con Xcode.
+
+Antes de abrirlo en Xcode, editar frontend/src/environments/environment.ios.ts
+con el dominio HTTPS privado real. iOS no debe usar la dirección HTTP local de
+las pruebas Android.
+
+En macOS:
+
+cd frontend
+npm install
+npm run sync:ios
+npm run ios:open
+
+En Xcode, seleccionar el equipo de firma institucional y generar Archive para
+crear el .ipa de distribución.

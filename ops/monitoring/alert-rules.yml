@@ -1,0 +1,101 @@
+groups:
+  - name: sigaa-operacion
+    rules:
+      - alert: SigaaApiNoDisponible
+        expr: up{job="sigaa-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: La API de SIGAA no responde
+          description: Prometheus no ha podido consultar la API durante 2 minutos.
+
+      - alert: SigaaErroresHttpElevados
+        expr: >-
+          sum(rate(http_server_requests_seconds_count{job="sigaa-api",status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_server_requests_seconds_count{job="sigaa-api"}[5m])), 0.000001)
+          > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Más de 5 % de errores HTTP 5xx
+
+      - alert: SigaaLatenciaElevada
+        expr: >-
+          histogram_quantile(0.95,
+          sum by (le) (rate(http_server_requests_seconds_bucket{job="sigaa-api"}[10m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Latencia p95 superior a 2 segundos
+
+      - alert: SigaaCorreoNoDisponible
+        expr: sigaa_smtp_available{job="sigaa-api"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: SMTP no disponible para recuperación de contraseña y segundo factor
+
+      - alert: SigaaDiscoBajo
+        expr: disk_free_bytes{job="sigaa-api"} / clamp_min(disk_total_bytes{job="sigaa-api"}, 1) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Menos de 15 % de espacio libre en el disco de la API
+
+      - alert: SigaaAdjuntosNoDisponibles
+        expr: sigaa_uploads_available{job="sigaa-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Almacenamiento de adjuntos no disponible
+
+      - alert: SigaaCopiaCompletaAtrasada
+        expr: time() - sigaa_full_backup_last_success_epoch_seconds{job="sigaa-api"} > 93600
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: No hay copia completa de base de datos y adjuntos en las últimas 26 horas
+
+      - alert: SigaaMemoriaJvmAlta
+        expr: >-
+          sum(jvm_memory_used_bytes{job="sigaa-api",area="heap"})
+          / clamp_min(sum(jvm_memory_max_bytes{job="sigaa-api",area="heap"}), 1) > 0.85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Uso del heap JVM superior a 85 %
+
+      - alert: SigaaPoolBaseDatosSaturado
+        expr: >-
+          hikaricp_connections_active{job="sigaa-api"}
+          / clamp_min(hikaricp_connections_max{job="sigaa-api"}, 1) > 0.90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Pool de conexiones de base de datos saturado
+
+      - alert: SigaaRespaldoAtrasado
+        expr: time() - sigaa_backup_last_success_epoch_seconds{job="sigaa-api"} > 93600
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: No hay un respaldo exitoso en las últimas 26 horas
+
+      - alert: SigaaRestauracionNoVerificada
+        expr: time() - sigaa_restore_test_last_success_epoch_seconds{job="sigaa-api"} > 691200
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: No se ha verificado una restauración en más de 8 días

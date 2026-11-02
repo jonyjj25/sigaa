@@ -1,0 +1,7 @@
+ops/postgres/*.sh text eol=lf
+ops/postgres/*.sql text eol=lf
+ops/scripts/*.sh text eol=lf
+ops/scripts/fixtures/*.sh text eol=lf
+
+# Auto detect text files and perform LF normalization
+* text=auto

@@ -1,0 +1,294 @@
+<app-dashboard-sidebar
+  [items]="menuItems()"
+  [collapsed]="auth.sidebarCollapsed()"
+  (logout)="onLogout()"
+/>
+<div class="layout" [class.collapsed]="auth.sidebarCollapsed()">
+  <app-dashboard-topbar
+    [notifications]="notifications()"
+    [userName]="auth.currentUser()?.nombre || 'Usuario'"
+    [userRole]="auth.currentUser()?.roles || ''"
+    [collapsed]="auth.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()"
+    (logout)="onLogout()"
+  />
+  <main>
+    @if (loading()) {
+    <div class="state" role="status">Cargando detalle de la unidad…</div>
+    } @else if (error()) {
+    <section class="state error" role="alert">
+      <h1>Acceso no disponible</h1>
+      <p>{{ error() }}</p>
+      <button type="button" (click)="volver()">Volver a unidades</button>
+    </section>
+    } @else if (grupo(); as g) {
+    <div class="breadcrumb">
+      <a routerLink="/dashboard">Inicio</a> <span>›</span>
+      <a routerLink="/grupos">Unidades</a> <span>›</span> {{ g.nombre }}
+    </div>
+    <header>
+      <button type="button" class="back" (click)="volver()">
+        <ion-icon name="arrow-back-outline" aria-hidden="true" /> Unidades
+      </button>
+      <div>
+        <h1>
+          {{ g.nombre }}
+          <small [class.inactive]="!g.activo"
+            >{{g.activo?'Activo':'Inactivo'}}</small
+          >
+        </h1>
+        <p>{{g.descripcion || 'Sin descripción registrada.'}}</p>
+        <div class="meta">
+          <span
+            ><ion-icon name="business-outline" aria-hidden="true" />
+            {{g.unidadNombre}}</span
+          ><span
+            ><ion-icon name="people-outline" aria-hidden="true" />
+            {{g.responsableNombre || 'Sin coordinador'}}</span
+          ><span>Creado {{g.creadoEn | date:'mediumDate'}}</span>
+        </div>
+      </div>
+    </header>
+    <nav role="tablist" aria-label="Secciones de la unidad">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="active()==='resumen'"
+        [class.active]="active()==='resumen'"
+        (click)="active.set('resumen')"
+      >
+        Resumen</button
+      ><button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="active()==='miembros'"
+        [class.active]="active()==='miembros'"
+        (click)="active.set('miembros')"
+      >
+        Miembros</button
+      ><button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="active()==='archivos'"
+        [class.active]="active()==='archivos'"
+        (click)="active.set('archivos')"
+      >
+        Archivos</button
+      ><button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="active()==='tareas'"
+        [class.active]="active()==='tareas'"
+        (click)="active.set('tareas')"
+      >
+        Tareas
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="unidad-chat-tab"
+        aria-controls="unidad-chat-panel"
+        [attr.aria-selected]="active()==='chat'"
+        [class.active]="active()==='chat'"
+        (click)="abrirChat()"
+      >
+        Chat
+      </button>
+    </nav>
+    <div class="body">
+      @if(active()!=='chat'){
+      <section class="content">
+        @if(active()==='resumen'){
+        <section class="summary" aria-labelledby="summary-title">
+          <div class="summary-head">
+            <div>
+              <p class="eyebrow">Vista general</p>
+              <h2 id="summary-title">Estado de la unidad</h2>
+            </div>
+          </div>
+          <div class="metrics">
+            <article class="metric-members">
+              <span class="metric-icon"><ion-icon name="people-outline" aria-hidden="true" /></span>
+              <div>
+                <span>Miembros</span>
+                <b>{{resumen().miembros}}</b>
+                <small>{{resumen().miembrosActivos}} activo{{resumen().miembrosActivos === 1 ? '' : 's'}}</small>
+              </div>
+            </article>
+            <article class="metric-tasks">
+              <span class="metric-icon"><ion-icon name="checkmark-circle-outline" aria-hidden="true" /></span>
+              <div>
+                <span>Tareas en curso</span>
+                <b>{{resumen().tareasActivas}}</b>
+                <small>{{resumen().tareasPendientes ? resumen().tareasPendientes + ' pendiente' + (resumen().tareasPendientes === 1 ? '' : 's') : 'Sin pendientes'}}</small>
+              </div>
+            </article>
+            <article class="metric-files">
+              <span class="metric-icon"><ion-icon name="document-outline" aria-hidden="true" /></span>
+              <div>
+                <span>Archivos</span>
+                <b>{{resumen().archivos}}</b>
+                <small>Documentos compartidos</small>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section class="empty" aria-labelledby="announcements-title">
+          <span class="empty-icon"><ion-icon name="megaphone-outline" aria-hidden="true" /></span>
+          <div>
+            <h2 id="announcements-title">Anuncios</h2>
+            <p>Aún no hay anuncios para esta unidad.</p>
+          </div>
+        </section>
+        } @else if(active()==='miembros'){
+        <div class="section-head">
+          <h2>Miembros</h2>
+          <div class="member-actions">
+            @if (canManage()) {<button type="button" class="manage-members" (click)="abrirGestionMiembros()">Gestionar miembros</button>}
+            <input
+              placeholder="Buscar miembro"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+              aria-label="Buscar miembro"
+            />
+          </div>
+        </div>
+        <div class="members">
+          @for(m of filteredMembers();track m.id){
+          <article>
+            <b class="avatar">{{initials(m.nombre)}}</b>
+            <div>
+              <strong>{{m.nombre}}</strong
+              ><small
+                >{{m.responsable?'Coordinador':'Miembro'}} ·
+                {{m.activo?'Activo':'Inactivo'}}</small
+              ><small>{{m.correo}}</small>
+            </div>
+          </article>
+          }@empty{
+          <p>No hay miembros registrados.</p>
+          }
+        </div>
+        } @else if(active()==='tareas'){
+        <div class="section-head"><h2>Tareas de la unidad</h2></div>
+        <div class="members">
+          @for(t of tareas();track t.id){
+          <article class="archivo-link" role="button" tabindex="0" (click)="abrirTarea(t)" (keydown.enter)="abrirTarea(t)" (keydown.space)="$event.preventDefault(); abrirTarea(t)" [attr.aria-label]="'Abrir tarea ' + t.titulo">
+            <b class="avatar">{{t.progreso}}%</b>
+            <div>
+              <strong>{{t.titulo}}</strong
+              ><small>{{t.asignado || 'Sin responsable'}} · {{t.estado}}</small
+              ><small
+                >Vence: {{t.fechaLimite || 'Sin fecha'}} ·
+                {{t.prioridad}}</small
+              >
+            </div>
+          </article>
+          }@empty{
+          <p>No hay tareas asociadas a esta unidad.</p>
+          }
+        </div>
+        } @else {
+        <div class="section-head"><h2>Archivos de la unidad</h2></div>
+        <div class="members">
+          @for(a of archivos();track a.id){
+          <article class="archivo-link" role="button" tabindex="0" (click)="abrirArchivo(a)" (keydown.enter)="abrirArchivo(a)" (keydown.space)="$event.preventDefault(); abrirArchivo(a)" [attr.aria-label]="'Abrir documento ' + a.nombre">
+            <b class="avatar"><ion-icon name="document-outline" /></b>
+            <div>
+              <strong>{{a.nombre}}</strong
+              ><small>{{a.tipo}} · {{a.tamano}}</small
+              ><small>{{a.propietario}} · {{a.fecha}}</small>
+            </div>
+          </article>
+          }@empty{
+          <p>No hay archivos asociados a esta unidad.</p>
+          }
+        </div>
+        }
+      </section>
+      } @else {
+      <section class="chat" id="unidad-chat-panel" role="tabpanel" aria-labelledby="unidad-chat-tab">
+        @if(chatLoadError()) { <p class="chat-error" role="alert">{{chatLoadError()}}</p> }
+        <div class="chat-head">
+          <span class="chat-icon"><ion-icon name="chatbubbles-outline" /></span>
+          <div>
+            <h2>Chat de la unidad</h2>
+            <small><i></i>{{miembros().length}} participante{{miembros().length === 1 ? '' : 's'}}</small>
+          </div>
+        </div>
+        <div class="messages">
+          @for(m of mensajes();track m.id){
+          <article class="message-row" [class.mine]="own(m)">
+            <span class="message-avatar"
+              >{{initials(own(m) ? 'Tú' : m.autorNombre)}}</span
+            >
+            <div class="message-bubble">
+              <b>{{own(m)?'Tú':m.autorNombre}}</b>
+              <p>{{m.contenido}}</p>
+              <small>{{m.creadoEn | date:'shortTime'}}</small>
+            </div>
+          </article>
+          }@empty{
+          <div class="chat-empty" [hidden]="!!chatLoadError()">
+            <span><ion-icon name="chatbubbles-outline" /></span>
+            <p>Aún no hay mensajes.</p>
+            <small>Inicia la conversación con tu unidad.</small>
+          </div>
+          }
+        </div>
+        @if(chatError()){
+        <p class="chat-error" role="alert">{{chatError()}}</p>
+        }
+        <div class="composer">
+          @if(mentionSuggestions().length){
+          <div class="mention-list" role="listbox">
+            @for(member of mentionSuggestions();track member.usuarioId){<button
+              type="button"
+              class="mention-option"
+              (click)="selectMention(member)"
+            >
+              <span class="mention-avatar">{{initials(member.nombre)}}</span
+              ><span class="mention-person"
+                ><b>{{member.nombre}}</b><small>{{member.correo}}</small></span
+              ></button
+            >}
+          </div>
+          }<textarea
+            [ngModel]="texto()"
+            (ngModelChange)="texto.set($event)"
+            maxlength="2000"
+            placeholder="Escribe un mensaje… Usa @ para mencionar"
+            aria-label="Mensaje para la unidad"
+            (keydown)="onChatKeydown($event)"
+          ></textarea
+          ><button
+            class="send-button"
+            (click)="send()"
+            [disabled]="!texto().trim() || enviando()"
+            aria-label="Enviar mensaje"
+            title="Enviar mensaje"
+          >
+            <ion-icon name="send-outline" />
+          </button>
+        </div>
+      </section>
+      }
+    </div>
+    }
+  </main>
+</div>
+
+<ion-modal [isOpen]="gestionarMiembrosOpen()" (didDismiss)="gestionarMiembrosOpen.set(false)">
+  <ng-template>
+    <ion-header><ion-toolbar color="primary"><ion-title>Gestionar miembros</ion-title><ion-buttons slot="end"><ion-button (click)="gestionarMiembrosOpen.set(false)" aria-label="Cerrar">Cerrar</ion-button></ion-buttons></ion-toolbar></ion-header>
+    <section class="member-manager">
+      <p>Seleccione las personas que pertenecen a esta unidad. El coordinador se mantiene asignado.</p>
+      <div class="member-selector">
+        @for (usuario of usuariosDisponibles(); track usuario.id) {
+          <label><input type="checkbox" [checked]="miembroIds().includes(usuario.id)" [disabled]="esResponsable(usuario.id)" (change)="cambiarMiembro(usuario.id, $any($event.target).checked)" /><span><b>{{ usuario.nombre }} {{ usuario.apellido || '' }}</b><small>{{ usuario.correo }}</small></span>@if (esResponsable(usuario.id)) {<em>Coordinador</em>}</label>
+        } @empty {<p>No hay usuarios disponibles para agregar.</p>}
+      </div>
+      <div class="member-manager-actions"><button type="button" (click)="gestionarMiembrosOpen.set(false)">Cancelar</button><button type="button" class="manage-members" [disabled]="guardandoMiembros()" (click)="guardarMiembros()">{{ guardandoMiembros() ? 'Guardando…' : 'Guardar miembros' }}</button></div>
+    </section>
+  </ng-template>
+</ion-modal>

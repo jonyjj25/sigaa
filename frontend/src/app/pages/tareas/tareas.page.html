@@ -1,0 +1,676 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <div class="tareas-content">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="header-row">
+          <div>
+            <h1 class="page-title">Tareas</h1>
+            <p class="page-desc">Gestión y seguimiento de tareas institucionales</p>
+          </div>
+          <div class="header-actions">
+            @if (can('Crear')) { <button class="btn-primary" (click)="openNewModal()">
+              <ion-icon name="add-outline" />
+              Nueva Tarea
+            </button> }
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid kpi-5">
+        <div class="kpi-card total">
+          <div class="kpi-icon" style="background: var(--brand-soft); color: var(--institutional-blue);">
+            <ion-icon name="clipboard-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{totalCount()}}</span>
+            <span class="kpi-label">Total de Tareas</span>
+          </div>
+        </div>
+        <div class="kpi-card warn">
+          <div class="kpi-icon" style="background: #fef3c7; color: #f59e0b;">
+            <ion-icon name="time-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{porHacerCount()}}</span>
+            <span class="kpi-label">Por Hacer</span>
+          </div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-icon" style="background: #f3e8ff; color: #a855f7;">
+            <ion-icon name="checkbox-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{enProgresoCount()}}</span>
+            <span class="kpi-label">En Progreso</span>
+          </div>
+        </div>
+        <div class="kpi-card good">
+          <div class="kpi-icon" style="background: #f0fdf4; color: #22c55e;">
+            <ion-icon name="checkmark-circle-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{completadasCount()}}</span>
+            <span class="kpi-label">Completadas</span>
+          </div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-icon" style="background: #fef2f2; color: #ef4444;">
+            <ion-icon name="alert-circle-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{vencidasCount()}}</span>
+            <span class="kpi-label">Vencidas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCIONES RAPIDAS -->
+      <div class="actions-bar">
+        @if (can('Asignar')) { <button class="action-btn" (click)="openAsignarModal()"><ion-icon
+            name="person-add-outline" /> Asignar Tarea</button> }
+        @if (can('Importar')) { <button class="action-btn" (click)="importarTareas()"><ion-icon
+            name="download-outline" /> Importar Tareas</button> }
+        @if (can('Completar')) { <button class="action-btn" [disabled]="selectedIds().size === 0"
+          (click)="marcarCompletadas()"><ion-icon name="checkmark-done-outline" /> Marcar Completadas</button> }
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filtros-row">
+        <div class="filtro-search-wrapper">
+          <ion-icon name="search-outline" class="search-icon" />
+          <input type="text" class="filtro-input" placeholder="Buscar por nombre..." [value]="filtroSearch()"
+            (input)="filtroSearch.set($any($event.target).value); currentPage.set(1); sincronizarSeleccionConFiltros()"
+            aria-label="Buscar tareas" />
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tab-bar">
+        <button class="tab-item" [class.active]="tabActivo() === 'todas'" (click)="setTab('todas')">Todas</button>
+        <button class="tab-item" [class.active]="tabActivo() === 'por_hacer'" (click)="setTab('por_hacer')">
+          Por Hacer
+          @if (porHacerCount() > 0) {
+          <span class="tab-badge amber">{{porHacerCount()}}</span>
+          }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'en_progreso'" (click)="setTab('en_progreso')">
+          En Proceso
+          @if (enProgresoCount() > 0) {
+          <span class="tab-badge purple">{{enProgresoCount()}}</span>
+          }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'completada'" (click)="setTab('completada')">
+          Completadas
+          @if (completadasCount() > 0) {
+          <span class="tab-badge green">{{completadasCount()}}</span>
+          }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'vencida'" (click)="setTab('vencida')">
+          Vencidas
+          @if (vencidasCount() > 0) {
+          <span class="tab-badge red">{{vencidasCount()}}</span>
+          }
+        </button>
+      </div>
+
+      <!-- MAIN CONTENT: 70/30 -->
+      <div class="content-grid">
+        <!-- LEFT: TABLE -->
+        <div class="table-section">
+          <div class="table-header">
+            <h3>Lista de Tareas <span class="count-badge">({{tareasFiltradas().length}})</span></h3>
+          </div>
+          @if (loading()) {
+          <div class="loading-skeleton" aria-label="Cargando tareas" role="status">
+            @for (line of [1, 2, 3, 4, 5, 6]; track line) { <span class="loading-skeleton__line"></span> }
+          </div>
+          } @else if (loadError()) {
+          <div class="content-feedback" role="alert">
+            <h3>No pudimos cargar las tareas</h3>
+            <p>Verifica tu conexión e intenta nuevamente.</p>
+            <button class="btn-primary" type="button" (click)="retryLoad()">Reintentar</button>
+          </div>
+          } @else {
+          <div class="table-container" (click)="closeMenu()">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-check">
+                    <button class="check-btn" type="button"
+                      [attr.aria-label]="allSelected() ? 'Deseleccionar todas las tareas' : 'Seleccionar todas las tareas'"
+                      (click)="toggleSelectAll(); $event.stopPropagation()"
+                      [title]="allSelected() ? 'Deseleccionar todas las tareas' : 'Seleccionar todas las tareas'">
+                      <ion-icon [name]="allSelected() ? 'checkbox-outline' : 'square-outline'" />
+                    </button>
+                  </th>
+                  <th>Tarea</th>
+                  <th>Proyecto / Grupo</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of paginatedTareas(); track item.id) {
+                <tr (click)="selectTarea(item)" [class.selected]="selectedTarea()?.id === item.id"
+                  class="clickable-row">
+                  <td class="col-check" data-label="Seleccionar" (click)="$event.stopPropagation()">
+                    <button class="check-btn" type="button"
+                      [attr.aria-label]="selectedIds().has(item.id) ? 'Deseleccionar ' + item.titulo : 'Seleccionar ' + item.titulo"
+                      (click)="toggleSelect(item.id)"
+                      [title]="selectedIds().has(item.id) ? 'Deseleccionar ' + item.titulo : 'Seleccionar ' + item.titulo">
+                      <ion-icon [name]="selectedIds().has(item.id) ? 'checkbox-outline' : 'square-outline'" />
+                    </button>
+                  </td>
+                  <td class="cell-tarea" data-label="Tarea">
+                    <div class="tarea-block">
+                      <span class="tarea-titulo">{{item.titulo}}</span>
+                      <span class="tarea-desc">{{item.descripcion}}</span>
+                    </div>
+                  </td>
+                  <td class="cell-proyecto" data-label="Proyecto / Grupo">
+                    <div class="proyecto-block">
+                      <span class="proyecto-name">{{item.proyecto}}</span>
+                      <span class="proyecto-code">{{item.codigo}}</span>
+                    </div>
+                  </td>
+                  <td data-label="Estado">
+                    <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                      [style.color]="estadoColor(item.estado)">
+                      {{estadoLabel(item.estado)}}
+                    </span>
+                  </td>
+                  <td class="actions-cell" data-label="Acciones" (click)="$event.stopPropagation()">
+                    <div class="context-menu-wrapper" (click)="toggleMenu(item.id)">
+                      <ion-icon name="ellipsis-vertical-outline" class="context-trigger" />
+                      @if (openMenuId() === item.id) {
+                      <div class="context-menu">
+                        <button class="context-item" (click)="selectTarea(item)">
+                          <ion-icon name="eye-outline" />
+                          Ver detalle
+                        </button>
+                        @if (can('Editar')) { <button class="context-item" (click)="openEditModal(item)">
+                          <ion-icon name="create-outline" />
+                          Editar
+                        </button> }
+                        @if (can('Completar')) { <button class="context-item" (click)="marcarComoCompletada(item)">
+                          <ion-icon name="checkbox-outline" />
+                          Marcar completada
+                        </button> }
+                        @if (authService.isInstitutionalManager() && can('Crear')) { <button class="context-item" (click)="duplicarTarea(item)">
+                          <ion-icon name="document-text-outline" />
+                          Duplicar
+                        </button> } @if (can('Eliminar')) { <button class="context-item context-danger"
+                          (click)="eliminarTarea(item)">
+                          <ion-icon name="close-outline" />
+                          Eliminar
+                        </button> }
+                      </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+                } @empty {
+                <tr>
+                  <td colspan="5" class="empty-state">
+                    <div class="empty-content">
+                      <ion-icon name="clipboard-outline" class="empty-icon" />
+                      <p>No se encontraron tareas</p>
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          }
+
+          <!-- PAGINATION -->
+          @if (!loading() && !loadError() && totalPages().length > 1) {
+          <div class="pagination">
+            <button class="page-btn" type="button" aria-label="Página anterior" (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1" title="Página anterior">
+              <ion-icon name="chevron-back-outline" />
+            </button>
+            @for (p of totalPages(); track p) {
+            <button class="page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">
+              {{p}}
+            </button>
+            }
+            <button class="page-btn" type="button" aria-label="Página siguiente" (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() === totalPages().length" title="Página siguiente">
+              <ion-icon name="chevron-forward-outline" />
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- RIGHT: DETAIL -->
+        @if (selectedTarea(); as item) {
+        <div class="detail-section">
+          <div class="detail-card">
+            <div class="detail-header">
+              <div class="detail-title-group">
+                <h3 class="detail-title">{{item.titulo}}</h3>
+                <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                  [style.color]="estadoColor(item.estado)">
+                  {{estadoLabel(item.estado)}}
+                </span>
+              </div>
+              <button class="btn-close-detail" type="button" aria-label="Cerrar detalle de tarea"
+                (click)="closeDetail()" title="Cerrar detalle de tarea">
+                <ion-icon name="close-outline" />
+              </button>
+            </div>
+
+            <div class="detail-body">
+              <div class="detail-row">
+                <span class="detail-label">Descripción</span>
+                <span class="detail-value">{{item.descripcion}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Proyecto / Grupo</span>
+                <span class="detail-value">{{item.proyecto}} ({{item.codigo}})</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Asignado a</span>
+                <span class="detail-value">{{item.asignado}} — {{item.cargo}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Prioridad</span>
+                <span class="detail-value">
+                  <span class="prioridad-badge" [style.background]="prioridadBg(item.prioridad)"
+                    [style.color]="prioridadColor(item.prioridad)">
+                    <ion-icon name="flag-outline" class="prioridad-icon" />
+                    {{prioridadLabel(item.prioridad)}}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">{{estadoLabel(item.estado)}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Creado por</span>
+                <span class="detail-value">{{item.creadoPor}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Fecha de inicio</span>
+                <span class="detail-value">{{item.fechaCreacion | date:'dd/MM/yyyy'}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Fecha de finalización</span>
+                <span class="detail-value">{{ item.fechaLimite ? (item.fechaLimite | date:'dd/MM/yyyy') : 'Sin fecha' }}</span>
+              </div>
+
+              <div class="detail-progress-section">
+                <div class="progress-header">
+                  <span class="detail-label">Progreso de la Tarea</span>
+                  <span class="progress-value">{{item.progreso}}%</span>
+                </div>
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" [style.width.%]="item.progreso"
+                    [style.background]="item.progreso === 100 ? '#22c55e' : 'var(--institutional-blue)'"></div>
+                </div>
+              </div>
+
+              <div class="detail-checklist">
+                <span class="detail-label">Checklist</span>
+                @for (c of item.checklist; track c.id) {
+                <label class="checklist-item">
+                  <input type="checkbox" [checked]="c.completado" (change)="toggleChecklist(item.id, c.id)" />
+                  <span class="checklist-text" [class.completed]="c.completado">{{c.texto}}</span>
+                </label>
+                }
+              </div>
+
+              @if (item.adjuntos.length > 0) {
+              <div class="detail-adjuntos">
+                <span class="detail-label">Archivos Adjuntos ({{item.adjuntos.length}})</span>
+                @for (a of item.adjuntos; track a.id || $index) {
+                <div class="adjunto-item">
+                  <div class="adjunto-info">
+                    <ion-icon name="document-text-outline" class="adjunto-icon" />
+                    <div class="adjunto-text">
+                      <span class="adjunto-nombre">{{a.nombre}}</span>
+                      <span class="adjunto-size">{{a.tamano}}</span>
+                      @if (!a.disponible) {
+                      <small class="adjunto-reference">Referencia sin archivo. Vuelve a adjuntar el original al
+                        editar.</small>
+                      }
+                    </div>
+                  </div>
+                  @if (a.disponible) {
+                  <div class="adjunto-actions">
+                    @if (puedePrevisualizar(a)) {
+                    <button class="btn-icon" type="button" title="Ver archivo" [attr.aria-label]="'Ver ' + a.nombre"
+                      [disabled]="cargandoAdjunto()" (click)="abrirAdjunto(item.id, a)"><ion-icon
+                        name="eye-outline" /></button>
+                    }
+                    <button class="btn-icon" type="button" title="Descargar archivo"
+                      [attr.aria-label]="'Descargar ' + a.nombre" [disabled]="cargandoAdjunto()"
+                      (click)="abrirAdjunto(item.id, a, true)"><ion-icon name="download-outline" /></button>
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+
+            <section class="task-history" aria-labelledby="task-history-title" [attr.aria-busy]="cargandoHistorial()">
+              <div class="task-history-heading">
+                <h4 id="task-history-title"><ion-icon name="time-outline" aria-hidden="true" />Historial de cambios</h4>
+                @if (!cargandoHistorial() && !errorHistorial()) {
+                <span class="task-history-count">{{historialTarea().length}}</span>
+                }
+              </div>
+              @if (cargandoHistorial()) {
+              <p class="task-history-message" role="status">Cargando historial…</p>
+              } @else if (errorHistorial()) {
+              <div class="task-history-message" role="alert">
+                <p>No se pudo cargar el historial de esta tarea.</p>
+                <button class="btn-action" type="button" (click)="reintentarHistorial()">Reintentar</button>
+              </div>
+              } @else if (historialTarea().length === 0) {
+              <p class="task-history-message">Aún no hay cambios registrados de responsable, estado o avance.</p>
+              } @else {
+              <ol class="task-history-list">
+                @for (movimiento of historialTarea(); track movimiento.id) {
+                <li class="task-history-item">
+                  <div class="task-history-meta">
+                    <strong>{{tipoMovimiento(movimiento.accion)}}</strong>
+                    <time [attr.datetime]="movimiento.fecha">{{movimiento.fecha | date:'dd/MM/yyyy HH:mm:ss'}}</time>
+                  </div>
+                  <p class="task-history-detail">{{movimiento.detalle}}</p>
+                  <span class="task-history-user"><ion-icon name="person-outline" aria-hidden="true" />{{movimiento.usuario}}</span>
+                </li>
+                }
+              </ol>
+              }
+            </section>
+
+            <div class="detail-actions">
+              @if (can('Editar')) { <button class="btn-action btn-action-edit" (click)="openEditModal(item)">
+                <ion-icon name="create-outline" />
+                Editar Tarea
+              </button> }
+              @if (can('Completar') && item.estado !== 'completada') {
+              <button class="btn-action btn-action-complete" (click)="marcarComoCompletada(item)">
+                <ion-icon name="checkmark-done-outline" />
+                Marcar como Completada
+              </button>
+              }
+              @if (can('Eliminar')) { <button class="btn-action btn-action-delete" (click)="eliminarTarea(item)">
+                <ion-icon name="close-outline" />
+                Eliminar Tarea
+              </button> }
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Nueva Tarea -->
+<ion-modal class="adjunto-preview" [isOpen]="!!vistaAdjunto()" (didDismiss)="cerrarVistaAdjunto()">
+  <ng-template>
+    @if (vistaAdjunto(); as vista) {
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>{{vista.nombre}}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="descargarVistaAdjunto()" aria-label="Descargar archivo"
+            title="Descargar archivo"><ion-icon name="download-outline" /></ion-button>
+          <ion-button (click)="cerrarVistaAdjunto()" aria-label="Cerrar vista previa"
+            title="Cerrar vista previa"><ion-icon name="close-outline" /></ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="adjunto-preview-body">
+      @if (vista.tipo === 'application/pdf') {
+      <iframe [src]="vista.recurso" [title]="vista.nombre"></iframe>
+      } @else {
+      <img [src]="vista.url" [alt]="vista.nombre" />
+      }
+    </div>
+    <div class="adjunto-preview-footer">Si tu navegador no muestra el archivo, utiliza el botón Descargar.</div>
+    }
+  </ng-template>
+</ion-modal>
+
+<ion-modal class="form-modal" [isOpen]="showModal()" [canDismiss]="!guardandoTarea()" (didDismiss)="closeModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>{{ editandoId() ? 'Editar Tarea' : 'Nueva Tarea' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar formulario de tarea" [disabled]="guardandoTarea()" (click)="closeModal()"
+            title="Cerrar formulario de tarea">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid" [attr.inert]="guardandoTarea() ? '' : null">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Título de la Tarea</label>
+          <input type="text" class="modal-input" placeholder="Ej: Revisión de acta de reunión"
+            [class.invalid]="formSubmitted() && !formTitulo().trim()" [value]="formTitulo()"
+            (input)="formTitulo.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Descripción</label>
+          <textarea class="modal-textarea" rows="3" placeholder="Descripción de la tarea" [value]="formDescripcion()"
+            (input)="formDescripcion.set($any($event.target).value)"></textarea>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Responsable principal y participantes</label>
+          <small class="field-hint">El primer usuario seleccionado será responsable; los demás podrán colaborar y
+            consultar la tarea.</small>
+          <select class="modal-select" (change)="agregarResponsableForm($event)"
+            [class.invalid]="formSubmitted() && formResponsables().length === 0">
+            <option value="">Seleccione un responsable</option>
+            @for (u of usuarios(); track u.id) {
+            <option [value]="u.id">{{u.nombre}}</option>
+            }
+          </select>
+          @if (formResponsables().length > 0) {
+          <div class="responsable-tags">
+            @for (r of formResponsables(); track r) {
+            <span class="tag" [class.primary-tag]="$first"><small>{{ $first ? 'Responsable' : 'Participante'
+                }}</small>{{ nombreUsuario(r) }}<button type="button" class="tag-remove"
+                [attr.aria-label]="'Quitar responsable ' + nombreUsuario(r)" (click)="quitarResponsableForm(r)"
+                [title]="'Quitar responsable ' + nombreUsuario(r)"><ion-icon name="close-outline"
+                  aria-hidden="true" /></button></span>
+            }
+          </div>
+          }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Prioridad</label>
+          <select class="modal-select" [value]="formPrioridad()"
+            (change)="formPrioridad.set($any($event.target).value)">
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="tarea-fecha-inicio">Fecha de inicio *</label>
+          <input id="tarea-fecha-inicio" type="date" class="modal-input"
+            [class.invalid]="formSubmitted() && !formFechaInicio()" [value]="formFechaInicio()"
+            (input)="formFechaInicio.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="tarea-fecha-finalizacion">Fecha de finalización <span class="field-optional">(opcional)</span></label>
+          <input id="tarea-fecha-finalizacion" type="date" class="modal-input"
+            [attr.min]="formFechaInicio() || null"
+            [class.invalid]="formSubmitted() && !fechasValidas()" [value]="formFechaFinalizacion()"
+            (input)="formFechaFinalizacion.set($any($event.target).value)"
+            aria-describedby="tarea-fechas-ayuda tarea-fechas-error" />
+          <small id="tarea-fechas-ayuda" class="field-hint">Al pasar esta fecha la tarea cambia a Vencida; no se marca como completada.</small>
+          @if (formSubmitted() && !fechasValidas()) {
+          <small id="tarea-fechas-error" class="field-error" role="alert">La fecha de finalización no puede ser anterior a la fecha de inicio.</small>
+          }
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Unidad(es) relacionada(s) <span class="field-optional">(opcional)</span></label>
+          <div class="default-checklist">
+            @for (u of unidadesDisponibles(); track u) {
+            <button class="default-chip" [class.selected]="isUnidadSelected(u)" type="button"
+              (click)="toggleUnidad(u)">{{ u }}</button>
+            }
+          </div>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Adjuntar archivo</label>
+          <small class="adjunto-help">Documentos, imágenes y ZIP/RAR. Máximo 10 MB por archivo y 45 MB por
+            guardado.</small>
+          @for (adj of formAdjuntos(); track $index) {
+          <div class="adjunto-item">
+            <span class="adjunto-nombre">{{ adj.nombre }}</span>
+            <span class="adjunto-tamano">({{ adj.tamano }})</span>
+            <small>{{ adj.archivo ? 'Por subir' : adj.disponible ? 'Guardado' : 'Solo referencia' }}</small>
+            <button type="button" class="adjunto-remove" [attr.aria-label]="'Quitar ' + adj.nombre"
+              (click)="quitarAdjunto($index)">&times;</button>
+          </div>
+          }
+          <div class="file-upload">
+            <input type="file" class="file-input" multiple
+              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+              aria-label="Seleccionar archivos adjuntos" (change)="agregarAdjunto($event)" />
+            <span class="file-placeholder">Seleccionar archivo...</span>
+          </div>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Checklist Inicial</label>
+          <div class="default-checklist">
+            @for (item of DEFAULT_CHECKLIST_ITEMS; track item) {
+            <button class="default-chip" [class.selected]="isInChecklist(item)" type="button"
+              (click)="toggleChecklistDefault(item)">
+              {{ item }}
+            </button>
+            }
+          </div>
+          <div class="checklist-editable">
+            @for (item of nuevoChecklist(); track item.id) {
+            <div class="checklist-editable-row">
+              <input type="text" class="checklist-input" [value]="item.texto"
+                (input)="updateChecklistText(item.id, $any($event.target).value)"
+                placeholder="Escriba un item del checklist..." />
+              <button class="checklist-remove" type="button" aria-label="Eliminar elemento de la lista"
+                (click)="removeChecklistItem(item.id)" title="Eliminar elemento de la lista">
+                <ion-icon name="close-outline" />
+              </button>
+            </div>
+            }
+            <button class="btn-add-checklist" type="button" (click)="addChecklistItem()">
+              <ion-icon name="add-outline" /> Agregar item
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" [disabled]="guardandoTarea()" (click)="closeModal()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" [disabled]="guardandoTarea()" (click)="guardarTarea()">
+          <ion-icon name="add-outline" />
+          {{ guardandoTarea() ? 'Guardando tarea y archivos…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Asignar Tarea -->
+<ion-modal class="form-modal" [isOpen]="showAsignarModal()" (didDismiss)="closeAsignarModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Asignar Tarea</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar asignación de responsables" (click)="closeAsignarModal()"
+            title="Cerrar asignación de responsables">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Tarea a asignar</label>
+          <select class="modal-select" [value]="asignarTareaId()"
+            (change)="asignarTareaId.set($any($event.target).value)">
+            <option value="">Seleccione una tarea</option>
+            @for (t of tareasSinAsignar(); track t.id) {
+            <option [value]="t.id">{{ t.titulo }} ({{ t.codigo }})</option>
+            }
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Responsable principal y participantes</label>
+          <small class="field-hint">El primer usuario será responsable; los demás quedarán como participantes de la
+            tarea.</small>
+          <select class="modal-select" (change)="agregarResponsableAsignar($event)">
+            <option value="">Seleccione un responsable</option>
+            @for (u of usuarios(); track u.id) {
+            <option [value]="u.id">{{u.nombre}}</option>
+            }
+          </select>
+          @if (asignarResponsables().length > 0) {
+          <div class="responsable-tags">
+            @for (r of asignarResponsables(); track r) {
+            <span class="tag" [class.primary-tag]="$first"><small>{{ $first ? 'Responsable' : 'Participante'
+                }}</small>{{ nombreUsuario(r) }}<button type="button" class="tag-remove"
+                [attr.aria-label]="'Quitar responsable ' + nombreUsuario(r)" (click)="quitarResponsableAsignar(r)"
+                [title]="'Quitar responsable ' + nombreUsuario(r)"><ion-icon name="close-outline"
+                  aria-hidden="true" /></button></span>
+            }
+          </div>
+          }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Prioridad</label>
+          <select class="modal-select" [value]="asignarPrioridad()"
+            (change)="asignarPrioridad.set($any($event.target).value)">
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Detalles / Nota</label>
+          <textarea class="modal-textarea" rows="3"
+            placeholder="Instrucciones adicionales para el responsable..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeAsignarModal()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" (click)="asignarTarea()">
+          <ion-icon name="person-add-outline" />
+          Asignar
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

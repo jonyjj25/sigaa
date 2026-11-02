@@ -1,0 +1,19 @@
+{
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/frontend/android/**"
+  ],
+  "java.project.resourceFilters": [
+    "node_modules",
+    "\\.git",
+    "\\.angular",
+    "\\.gradle",
+    "www"
+  ],
+  "java.import.gradle.enabled": false,
+  "java.gradle.buildServer.enabled": "off",
+  "gradle.autoDetect": "off"
+}

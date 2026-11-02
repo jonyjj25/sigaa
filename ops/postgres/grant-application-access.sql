@@ -1,0 +1,28 @@
+-- Después de restaurar un dump --no-owner --no-privileges en una BD dedicada.
+\set ON_ERROR_STOP on
+BEGIN;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO sigaa_runtime, sigaa_backup;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sigaa_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sigaa_runtime;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO sigaa_backup;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO sigaa_backup;
+DO $$
+DECLARE f record;
+BEGIN
+    FOR f IN SELECT p.oid::regprocedure AS signature FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND NOT p.prosecdef AND p.prokind = 'f'
+    LOOP
+        EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO sigaa_runtime', f.signature);
+    END LOOP;
+END $$;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO sigaa_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO sigaa_runtime;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO sigaa_backup;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO sigaa_backup;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+COMMIT;

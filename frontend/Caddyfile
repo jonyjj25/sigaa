@@ -1,0 +1,39 @@
+{
+    admin off
+    servers {
+        # Lista explícita del proxy de entrada; por defecto solo loopback.
+        trusted_proxies static {$SIGAA_TRUSTED_PROXIES:127.0.0.1/32 ::1/128}
+        trusted_proxies_strict
+        client_ip_headers X-Forwarded-For
+    }
+}
+
+:8080 {
+    encode zstd gzip
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(self), microphone=(), camera=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        Strict-Transport-Security "max-age=31536000"
+    }
+
+    @backend path /api /api/* /uploads /uploads/*
+    handle @backend {
+        reverse_proxy api:8080 {
+            # Usar la IP ya validada por la cadena de confianza, sin valores inyectados.
+            header_up X-Forwarded-For {client_ip}
+            header_up -Forwarded
+        }
+    }
+    handle {
+        @staticAssets path *.css *.js *.woff2 *.svg *.png *.jpg *.jpeg *.webp
+        header @staticAssets Cache-Control "public, max-age=31536000, immutable"
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

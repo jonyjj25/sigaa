@@ -1,0 +1,52 @@
+@if (!collapsed()) {
+  <button class="sidebar-backdrop" type="button" aria-label="Cerrar menú lateral" (click)="closeMobileSidebar()"></button>
+}
+
+<aside class="sidebar" [class.collapsed]="collapsed()">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-mark"><img src="assets/images/alerta-amber-logo-sidebar.png" alt="Alerta Amber Panamá" class="logo-img" width="96" height="60" /></div>
+      @if (!collapsed()) {
+        <div class="brand-copy"><span class="logo-text">SIGAA</span><span class="brand-subtitle">Gestión institucional</span></div>
+      }
+    </div>
+    <div class="sidebar-header-actions">
+      <button class="sidebar-close" type="button" aria-label="Cerrar menú lateral" (click)="closeMobileSidebar()">&times;</button>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    @for (item of items(); track item.label) {
+      @if (item.divider) {
+        <div class="nav-divider"></div>
+      } @else {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+          (click)="closeOnMobileNavigation()"
+          [title]="collapsed() ? item.label : ''"
+        >
+          <ion-icon [name]="item.icon" class="nav-icon" aria-hidden="true" />
+          @if (!collapsed()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+          @if (item.badge && !collapsed()) {
+            <span class="nav-badge">{{ item.badge }}</span>
+          }
+        </a>
+      }
+    }
+  </nav>
+
+  <div class="sidebar-footer">
+    <button type="button" class="nav-item logout-btn" aria-label="Cerrar sesión" (click)="logout.emit()">
+      <ion-icon name="log-out-outline" class="nav-icon" aria-hidden="true" />
+      @if (!collapsed()) {
+        <span class="nav-label">Cerrar sesión</span>
+      }
+    </button>
+  </div>
+</aside>

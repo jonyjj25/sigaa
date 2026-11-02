@@ -1,0 +1,152 @@
+x-logging: &bounded-logs
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    logging: *bounded-logs
+    command: ["postgres", "-c", "timezone=${APP_TIME_ZONE:-America/Panama}"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Configure la credencial de ejecución}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?Configure la credencial de respaldos}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./ops/postgres/010-sigaa-roles.sh:/docker-entrypoint-initdb.d/010-sigaa-roles.sh:ro
+      - ./ops/postgres/provision-roles.sql:/opt/sigaa/provision-roles.sql:ro
+      - ./backend/sigaa-api/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/020-sigaa-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+
+  api:
+    build: ./backend/sigaa-api
+    restart: unless-stopped
+    logging: *bounded-logs
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USERNAME: sigaa_runtime
+      DB_PASSWORD: ${APP_DB_PASSWORD:?Configure la credencial de ejecución}
+      BACKUP_DB_USERNAME: sigaa_backup
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?Configure la credencial de respaldos}
+      JWT_SECRET: ${JWT_SECRET:?Configure la clave de sesión}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-Strict}
+      AUTH_RATE_WINDOW_SECONDS: ${AUTH_RATE_WINDOW_SECONDS:-900}
+      AUTH_RATE_IDENTITY_ATTEMPTS: ${AUTH_RATE_IDENTITY_ATTEMPTS:-5}
+      AUTH_RATE_IP_ATTEMPTS: ${AUTH_RATE_IP_ATTEMPTS:-30}
+      AUTH_RATE_BASE_BLOCK_SECONDS: ${AUTH_RATE_BASE_BLOCK_SECONDS:-30}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Configure los orígenes autorizados}
+      QR_PUBLIC_URL: ${QR_PUBLIC_URL:?Configure la URL HTTPS pública}
+      REPORT_SCHEDULER_DELAY_MS: ${REPORT_SCHEDULER_DELAY_MS:-60000}
+      APP_TIME_ZONE: ${APP_TIME_ZONE:-America/Panama}
+      TZ: ${APP_TIME_ZONE:-America/Panama}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${APP_TIME_ZONE:-America/Panama}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      BACKUP_PG_DUMP: /usr/local/bin/pg_dump
+      BACKUP_PG_RESTORE: /usr/local/bin/pg_restore
+      BACKUP_DIR: /var/lib/sigaa/backups
+      BACKUP_EXTERNAL_DIR: /var/lib/sigaa/backups-external
+      BACKUP_ENCRYPTION_KEY_BASE64: ${BACKUP_ENCRYPTION_KEY_BASE64:?Genere y configure BACKUP_ENCRYPTION_KEY_BASE64}
+      BACKUP_AUTOMATIC_ENABLED: ${BACKUP_AUTOMATIC_ENABLED:-true}
+      BACKUP_RESTORE_TEST_ENABLED: ${BACKUP_RESTORE_TEST_ENABLED:-true}
+      BACKUP_PROCESS_TIMEOUT: ${BACKUP_PROCESS_TIMEOUT:-PT30M}
+      BACKUP_PROCESS_STOP_TIMEOUT: ${BACKUP_PROCESS_STOP_TIMEOUT:-PT5S}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_RETENTION_COPIES: ${BACKUP_RETENTION_COPIES:-30}
+      BACKUP_SCHEDULE_CRON: ${BACKUP_SCHEDULE_CRON:-0 0 2 * * *}
+      BACKUP_RESTORE_TEST_CRON: ${BACKUP_RESTORE_TEST_CRON:-0 0 4 * * SUN}
+      LIBREOFFICE_COMMAND: /usr/bin/soffice
+      MANAGEMENT_PORT: 8081
+      MANAGEMENT_BIND_ADDRESS: 0.0.0.0
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    volumes:
+      - uploads_data:/app/uploads
+      - backups_data:/var/lib/sigaa/backups
+      - ${BACKUP_EXTERNAL_DIR_HOST:?Configure una ruta absoluta en otro disco o servidor}:/var/lib/sigaa/backups-external
+      - ${SIGAA_FONTS_DIR_HOST:?Configure el directorio de fuentes Verdana}:/usr/local/share/fonts/sigaa:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m,uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [private]
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    logging: *bounded-logs
+    environment:
+      SIGAA_TRUSTED_PROXIES: ${SIGAA_TRUSTED_PROXIES:?Configure las IP/CIDR exactas del proxy vistas desde Caddy}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # Private by default. A VPN or an institutional reverse proxy can reach
+      # this loopback port; PostgreSQL and the API are never published.
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8088}:8080"
+    read_only: true
+    tmpfs:
+      - /data:rw,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0750
+      - /config:rw,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0750
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [private]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    restart: unless-stopped
+    logging: *bounded-logs
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./ops/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    networks: [private]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    profiles: [observability]
+    restart: unless-stopped
+    logging: *bounded-logs
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ${ALERTMANAGER_CONFIG_FILE:-./ops/monitoring/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+    networks: [private]
+
+networks:
+  private:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads_data:
+  backups_data:
+  prometheus_data:

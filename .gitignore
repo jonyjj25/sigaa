@@ -3,10 +3,12 @@
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 
 # Variables locales y secretos
 .env
 .env.*
+!.env.example
 *.local
 
 # Frontend
@@ -15,13 +17,36 @@ frontend/www/
 frontend/dist/
 frontend/.angular/
 frontend/coverage/
+frontend/src/environments/environment.android.generated.ts
 
 # Backend
 backend/**/target/
 backend/**/logs/
 backend/**/*.log
+backend/**/uploads/
+certs/*.p12
+certs/*.pem
+certs/*.key
+keystore.p12
+*.p12
+*.jks
+*.keystore
+*.pfx
 
 # Archivos temporales
 *.tmp
 *.bak
 *.swp
+hs_err_pid*.log
+replay_pid*.log
+sigaa-database.sql
+data/backups-external/
+backups/
+ops/monitoring/alertmanager.local.yml
+
+# Checkpoints locales de código (nunca se publican)
+.phase0/
+.runtime/
+output/~$*
+output/apk/
+output/db-backups/

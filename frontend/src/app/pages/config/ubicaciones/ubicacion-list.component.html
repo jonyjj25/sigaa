@@ -1,0 +1,132 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-left">
+      <div class="header-icon"><ion-icon name="business-outline" /></div>
+      <div>
+        <span class="eyebrow">Control territorial</span>
+        <h1>Ubicaciones / Sedes</h1>
+        <p class="subtitle">Administra las sedes autorizadas para validar asistencia por coordenadas GPS.</p>
+      </div>
+    </div>
+    <button class="btn-primary" (click)="abrirModalNuevo()">
+      <ion-icon name="add-outline" />
+      Nueva Sede
+    </button>
+  </div>
+
+  <section class="locations-card">
+    <div class="locations-card-header">
+      <div>
+        <span class="section-kicker">Catálogo institucional</span>
+        <h2>Sedes registradas</h2>
+        <p>Define el perímetro de validación para cada sede.</p>
+      </div>
+      <span class="location-count">{{ ubicaciones().length }} {{ ubicaciones().length === 1 ? 'sede' : 'sedes' }}</span>
+    </div>
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Dirección</th>
+          <th>Coordenadas</th>
+          <th>Radio</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of ubicaciones(); track u.id) {
+          <tr>
+            <td class="sede-name" data-label="Sede"><span class="sede-icon"><ion-icon name="business-outline" /></span>{{ u.nombre }}</td>
+            <td class="sede-addr" data-label="Dirección">{{ u.direccion }}</td>
+            <td class="sede-coords" data-label="Coordenadas"><ion-icon name="location-outline" /> {{ formatearCoordenadas(u.latitud, u.longitud) }}</td>
+            <td data-label="Radio"><span class="badge badge-info">{{ u.radio }} m</span></td>
+            <td class="actions-cell" data-label="Acciones">
+              <button class="btn-icon" type="button" (click)="abrirModalEditar(u)" title="Editar" aria-label="Editar ubicación">
+                <ion-icon name="create-outline" />
+              </button>
+              <button class="btn-icon btn-icon-danger" type="button" (click)="confirmarEliminar(u.id)" title="Eliminar" aria-label="Eliminar ubicación">
+                <ion-icon name="trash-outline" />
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5" class="empty-cell"><ion-icon name="location-outline" /><strong>No hay sedes registradas</strong><span>Agrega la primera sede para validar asistencia por ubicación.</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  </section>
+</div>
+
+<ion-modal [isOpen]="showModal()" (didDismiss)="cerrarModal()" class="ubicacion-modal">
+  <ng-template>
+    <div class="modal-wrapper">
+      <div class="modal-header">
+        <h2>{{ editingUbicacion() ? 'Editar Sede' : 'Nueva Sede' }}</h2>
+        <button class="modal-close-btn" type="button" aria-label="Cerrar formulario de ubicación" (click)="cerrarModal()" title="Cerrar formulario de ubicación">
+          <ion-icon name="close-outline" />
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <label class="form-label">Nombre de la sede</label>
+          <input type="text" class="form-input" placeholder="Ej: Sede Central"
+            [value]="formNombre()" (input)="formNombre.set($any($event.target).value)" />
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-input" placeholder="Ej: Av. Principal #123"
+            [value]="formDireccion()" (input)="formDireccion.set($any($event.target).value)" />
+        </div>
+
+        <div class="form-row">
+          <div class="coords-header">
+            <label class="form-label">Coordenadas</label>
+            <button type="button" class="btn-gps" (click)="obtenerUbicacionActual()" [disabled]="obteniendoUbicacion()">
+              @if (obteniendoUbicacion()) {
+                <span class="gps-spinner"></span>
+                Obteniendo...
+              } @else {
+                <ion-icon name="locate-outline" />
+                Usar ubicación actual
+              }
+            </button>
+          </div>
+          <div class="coords-grid">
+            <div class="coord-field">
+              <span class="coord-label">Latitud</span>
+              <input type="number" class="form-input" step="0.0001" placeholder="0.0000"
+                [value]="formLatitud()" (change)="formLatitud.set(toNumber($any($event.target).value))" />
+            </div>
+            <div class="coord-field">
+              <span class="coord-label">Longitud</span>
+              <input type="number" class="form-input" step="0.0001" placeholder="0.0000"
+                [value]="formLongitud()" (change)="formLongitud.set(toNumber($any($event.target).value))" />
+            </div>
+          </div>
+          @if (errorUbicacion()) {
+            <p class="error-msg">{{ errorUbicacion() }}</p>
+          }
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Radio de tolerancia (metros)</label>
+          <input type="number" class="form-input" min="10" max="10000" step="10"
+            [value]="formRadio()" (change)="formRadio.set(toNumber($any($event.target).value))" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="cerrarModal()">Cancelar</button>
+        <button class="btn-save" (click)="guardarUbicacion()">
+          {{ editingUbicacion() ? 'Actualizar' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

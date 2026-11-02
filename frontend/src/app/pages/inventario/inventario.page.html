@@ -1,0 +1,566 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [userPhoto]="authService.currentUser()?.fotografiaRuta || ''"
+    [collapsed]="authService.sidebarCollapsed()" (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <div class="inventario-content">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="header-row">
+          <div class="page-heading-copy">
+            <span class="page-eyebrow">Control patrimonial</span>
+            <h1 class="page-title">Inventario</h1>
+            <p class="page-desc">Activos de oficina, estado de funcionamiento, responsables y unidades</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-export" (click)="exportCSV()" title="Exportar CSV">
+              <ion-icon name="download-outline" />
+              Exportar
+            </button>
+            <button class="btn-primary" (click)="openNewModal()">
+              <ion-icon name="add-outline" />
+              Nuevo Activo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      @if (loading()) {
+      <div class="inventory-skeleton" role="status" aria-label="Cargando inventario">
+        <div class="skeleton-kpis">
+          @for (item of [1,2,3,4,5]; track item) { <span></span> }
+        </div>
+        <div class="skeleton-content"><span></span><span></span></div>
+      </div>
+      } @else if (loadError()) {
+      <section class="content-feedback" role="alert">
+        <ion-icon name="warning-outline" />
+        <h2>No pudimos cargar el inventario</h2>
+        <p>Verifica la conexión con el servidor e intenta nuevamente.</p>
+        <button type="button" class="btn-primary" (click)="retryLoad()">Reintentar</button>
+      </section>
+      } @else {
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card total">
+          <div class="kpi-icon" style="background: var(--brand-soft); color: var(--institutional-blue);">
+            <ion-icon name="cube-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{totalCount()}}</span>
+            <span class="kpi-label">Total de Activos</span>
+          </div>
+        </div>
+        <div class="kpi-card good">
+          <div class="kpi-icon" style="background: #f0fdf4; color: #22c55e;">
+            <ion-icon name="checkmark-circle-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{buenEstadoCount()}}</span>
+            <span class="kpi-label">Activos en buen estado</span>
+            <span class="kpi-sub">{{totalCount() > 0 ? (buenEstadoCount() / totalCount() * 100 | number:'1.0-0') : 0}}%
+              del total</span>
+          </div>
+        </div>
+        <div class="kpi-card warn">
+          <div class="kpi-icon" style="background: #fef3c7; color: #f59e0b;">
+            <ion-icon name="construct-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{mantenimientoCount()}}</span>
+            <span class="kpi-label">Activos en mantenimiento</span>
+            <span class="kpi-sub">{{totalCount() > 0 ? (mantenimientoCount() / totalCount() * 100 | number:'1.0-0') :
+              0}}% del total</span>
+          </div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-icon" style="background: #fef2f2; color: #ef4444;">
+            <ion-icon name="warning-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{fueraServicioCount()}}</span>
+            <span class="kpi-label">Activos fuera de servicio</span>
+            <span class="kpi-sub">{{totalCount() > 0 ? (fueraServicioCount() / totalCount() * 100 | number:'1.0-0') :
+              0}}% del total</span>
+          </div>
+        </div>
+        <div class="kpi-card damaged">
+          <div class="kpi-icon">
+            <ion-icon name="close-circle-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{danadoCount()}}</span>
+            <span class="kpi-label">Activos dañados</span>
+            <span class="kpi-sub">{{totalCount() > 0 ? (danadoCount() / totalCount() * 100 | number:'1.0-0') : 0}}% del
+              total</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filtros-row">
+        <div class="filtro-search-wrapper">
+          <ion-icon name="search-outline" class="search-icon" />
+          <input type="text" class="filtro-input" placeholder="Buscar por nombre, código, unidad o responsable..."
+            [value]="filtroSearch()" (input)="filtroSearch.set($any($event.target).value); onFilterChange()" />
+        </div>
+        <select aria-label="Filtrar por categoría" class="filtro-select" [value]="filtroCategoria()"
+          (change)="filtroCategoria.set($any($event.target).value); onFilterChange()">
+          <option value="Todas">Todas las categorías</option>
+          @for (categoria of categoriaOptions(); track categoria) { <option [value]="categoria">{{ categoria }}</option>
+          }
+        </select>
+        <select aria-label="Filtrar por estado" class="filtro-select" [value]="filtroEstado()"
+          (change)="filtroEstado.set($any($event.target).value); onFilterChange()">
+          <option value="Todos">Todos los estados</option>
+          <option value="En buen estado">En buen estado</option>
+          <option value="Mantenimiento">Mantenimiento</option>
+          <option value="Fuera de servicio">Fuera de servicio</option>
+          <option value="Dañado">Dañado</option>
+        </select>
+        <select aria-label="Filtrar por ubicación" class="filtro-select" [value]="filtroUbicacion()"
+          (change)="filtroUbicacion.set($any($event.target).value); onFilterChange()">
+          <option value="Todas">Todas las ubicaciones</option>
+          @for (ubicacion of ubicacionOptions(); track ubicacion) { <option [value]="ubicacion">{{ ubicacion }}</option>
+          }
+        </select>
+        <select aria-label="Filtrar por unidad" class="filtro-select" [value]="filtroUnidad()"
+          (change)="filtroUnidad.set($any($event.target).value); onFilterChange()">
+          <option value="Todas">Todas las unidades</option>
+          @for (unidad of unidadOptions(); track unidad) { <option [value]="unidad">{{ unidad }}</option> }
+        </select>
+        <button class="btn-filtros" (click)="limpiarFiltros()">
+          <ion-icon name="filter-outline" />
+          Limpiar
+        </button>
+      </div>
+
+      <!-- MAIN CONTENT: 70/30 -->
+      <div class="content-grid">
+        <!-- LEFT: TABLE -->
+        <div class="table-section">
+          <div class="table-header">
+            <div class="inventory-table-heading">
+              <h3><ion-icon name="cube-outline" aria-hidden="true" /> Activos <span
+                  class="count-badge">{{filteredCount()}} de {{totalCount()}}</span></h3>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre Activo</th>
+                  <th>Unidad</th>
+                  <th>Responsable</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of paginatedActivos(); track item.id) {
+                <tr (click)="selectActivo(item)" [class.selected]="selectedActivo()?.id === item.id"
+                  class="clickable-row">
+                  <td class="cell-code">{{item.codigo}}</td>
+                  <td class="cell-name">{{item.nombre}}</td>
+                  <td>{{item.unidad || 'Sin asignar'}}</td>
+                  <td>{{item.responsable || 'Sin asignar'}}</td>
+                  <td>
+                    <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                      [style.color]="estadoColor(item.estado)">
+                      {{estadoLabel(item.estado)}}
+                    </span>
+                  </td>
+                  <td class="actions-cell" (click)="$event.stopPropagation()">
+                    <div class="inventory-row-actions">
+                    <button class="btn-icon" type="button" title="Ver detalle" aria-label="Ver detalle del activo"
+                      (click)="verDetalle(item)">
+                      <ion-icon name="eye-outline" />
+                    </button>
+                    <button class="btn-icon" type="button" title="Editar" aria-label="Editar activo"
+                      (click)="openEditModal(item)">
+                      <ion-icon name="create-outline" />
+                    </button>
+                    <button class="btn-icon" type="button" title="Historial" aria-label="Ver historial del activo"
+                      (click)="verHistorial(item)">
+                      <ion-icon name="time-outline" />
+                    </button>
+                    <button class="btn-icon btn-icon-danger" type="button" title="Eliminar" aria-label="Eliminar activo"
+                      (click)="eliminarActivo(item)">
+                      <ion-icon name="trash-outline" />
+                    </button>
+                    </div>
+                  </td>
+                </tr>
+                } @empty {
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="empty-content inventory-empty-content">
+                      <span class="empty-inventory-icon" aria-hidden="true"><ion-icon name="cube-outline" /></span>
+                      <div>
+                        <strong>{{ totalCount() === 0 ? 'No hay activos registrados' : 'No se encontraron activos'
+                          }}</strong>
+                        <p>{{ totalCount() === 0 ? 'Los activos que registres aparecerán aquí.' : 'Prueba con otros
+                          filtros o limpia la búsqueda.' }}</p>
+                      </div>
+                      @if (totalCount() > 0) {
+                      <button type="button" (click)="limpiarFiltros()">Limpiar filtros</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- PAGINATION -->
+          @if (totalPages().length > 1) {
+          <div class="pagination">
+            <button class="page-btn" type="button" aria-label="Página anterior" (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1" title="Página anterior">
+              <ion-icon name="chevron-back-outline" />
+            </button>
+            @for (p of totalPages(); track p) {
+            <button class="page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">
+              {{p}}
+            </button>
+            }
+            <button class="page-btn" type="button" aria-label="Página siguiente" (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() === totalPages().length" title="Página siguiente">
+              <ion-icon name="chevron-forward-outline" />
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- RIGHT: DETAIL -->
+        <div class="detail-section">
+          @if (selectedActivo(); as item) {
+          <div class="detail-card">
+            <div class="detail-header">
+              <div class="detail-avatar">
+                <ion-icon name="cube-outline" />
+              </div>
+              <div class="detail-title-group">
+                <h3 class="detail-title">{{item.nombre}}</h3>
+                <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                  [style.color]="estadoColor(item.estado)">
+                  {{estadoLabel(item.estado)}}
+                </span>
+              </div>
+            </div>
+
+            <div class="detail-body">
+              <div class="detail-row">
+                <span class="detail-label">Asignación</span>
+                <span class="detail-value">{{ asignacionLabel(item.tipoAsignacion) }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Código</span>
+                <span class="detail-value">{{item.codigo}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Categoría</span>
+                <span class="detail-value">{{item.categoria}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Marca / Modelo</span>
+                <span class="detail-value">{{item.marcaModelo}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Serie</span>
+                <span class="detail-value">{{item.serie}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Serie Institucional</span>
+                <span class="detail-value">{{item.serieInstitucional || '—'}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Fecha adquisición</span>
+                <span class="detail-value">{{formatFecha(item.fechaAdquisicion)}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Ubicación</span>
+                <span class="detail-value">{{item.ubicacion}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Unidad</span>
+                <span class="detail-value">{{item.unidad || 'Sin unidad asignada'}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Responsable</span>
+                <span class="detail-value">{{item.responsable || 'Sin responsable asignado'}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Proveedor</span>
+                <span class="detail-value">{{item.proveedor}}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">
+                  <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                    [style.color]="estadoColor(item.estado)">
+                    {{estadoLabel(item.estado)}}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row detail-desc">
+                <span class="detail-label">Descripción</span>
+                <span class="detail-value">{{item.descripcion}}</span>
+              </div>
+              <div class="detail-actions">
+                <button type="button" class="btn-detail" (click)="openEditModal(item)"><ion-icon
+                    name="create-outline" /> Editar</button>
+                <button type="button" class="btn-detail" (click)="verHistorial(item)"><ion-icon name="time-outline" />
+                  Historial</button>
+                <button type="button" class="btn-detail btn-detail-danger" (click)="eliminarActivo(item)"><ion-icon
+                    name="trash-outline" /> Eliminar</button>
+              </div>
+            </div>
+          </div>
+          } @else {
+          <div class="detail-empty">
+            <ion-icon name="cube-outline" />
+            <p>Seleccione un activo para ver su detalle</p>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Nuevo Activo -->
+<ion-modal class="inventory-form-modal" [isOpen]="showModal()" [canDismiss]="canDismissModal"
+  (didDismiss)="closeModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>{{editModalTitle()}}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar formulario" (click)="requestCloseModal()" title="Cerrar formulario">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body" (input)="formDirty.set(true)" (change)="formDirty.set(true)">
+      @if (formSubmitted() && !formValido()) {
+      <div class="form-summary-error" role="alert">
+        @for (error of formErrores(); track error) { <p>{{error}}</p> }
+      </div>
+      }
+      @if (saveError()) { <div class="form-summary-error" role="alert">{{saveError()}}</div> }
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label class="modal-label">Nombre del Activo <span class="required">*</span></label>
+          <input type="text" class="modal-input" placeholder="Ej: Laptop HP 5548"
+            [class.invalid]="formSubmitted() && !formNombre().trim()" required maxlength="300" [value]="formNombre()"
+            (input)="formNombre.set($any($event.target).value)" />
+          @if (formSubmitted() && !formNombre().trim()) { <span class="field-error">El nombre es obligatorio.</span> }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Código</label>
+          <input type="text" class="modal-input" [value]="nextCode()" readonly />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Categoría <span class="required">*</span></label>
+          <select class="modal-select" [class.invalid]="formSubmitted() && !formCategoria()" required
+            [value]="formCategoria()" (change)="formCategoria.set($any($event.target).value)">
+            <option value="">Seleccione</option>
+            <option value="Equipo de cómputo">Equipo de cómputo</option>
+            <option value="Equipo de Oficina">Equipo de Oficina</option>
+            <option value="Mobiliario">Mobiliario</option>
+            <option value="Seguridad">Seguridad</option>
+            <option value="Vehículos">Vehículos</option>
+          </select>
+          @if (formSubmitted() && !formCategoria()) { <span class="field-error">Selecciona una categoría.</span> }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Marca / Modelo</label>
+          <input type="text" class="modal-input" placeholder="Ej: HP 5548" maxlength="200" [value]="formMarcaModelo()"
+            (input)="formMarcaModelo.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">N° Serie</label>
+          <input type="text" class="modal-input" placeholder="Ej: CX12598723" maxlength="200" [value]="formSerie()"
+            (input)="formSerie.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">N° de Serie Institucional</label>
+          <input type="text" class="modal-input" placeholder="Ej: AAP-2025-001" maxlength="200" [value]="formSerieInstitucional()"
+            (input)="formSerieInstitucional.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Fecha Adquisición</label>
+          <input type="date" class="modal-input" [max]="fechaMaxima" [value]="formFechaAdquisicion()"
+            (input)="formFechaAdquisicion.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="inventario-ubicacion">Ubicación física <span class="required">*</span></label>
+          <input id="inventario-ubicacion" type="text" class="modal-input" maxlength="200" required
+            placeholder="Ej: oficina, sala o bodega" list="inventario-ubicaciones"
+            [class.invalid]="formSubmitted() && !formUbicacion().trim()" [value]="formUbicacion()"
+            (input)="formUbicacion.set($any($event.target).value)" />
+          <datalist id="inventario-ubicaciones">
+            @for (ubicacion of ubicacionOptions(); track ubicacion) { <option [value]="ubicacion"></option> }
+          </datalist>
+          @if (formSubmitted() && !formUbicacion().trim()) { <span class="field-error">Indica la ubicación física.</span> }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="inventario-asignacion">Asignación del activo</label>
+          <select id="inventario-asignacion" class="modal-select" [ngModel]="formTipoAsignacion()"
+            (ngModelChange)="cambiarTipoAsignacion($event)">
+            @if (formTipoAsignacion() === 'PENDIENTE_REVISION') {
+              <option value="PENDIENTE_REVISION" disabled>Selecciona una asignación válida</option>
+            }
+            <option value="SIN_ASIGNAR">Sin asignar</option>
+            <option value="PERSONA">Asignado a una persona</option>
+            <option value="UNIDAD">Asignado a una unidad / departamento</option>
+          </select>
+          @if (formTipoAsignacion() === 'PENDIENTE_REVISION') {
+            <span class="field-error">Asignación anterior: {{ formResponsable() || 'Sin persona indicada' }} · {{ formUnidad() || 'Sin unidad indicada' }}. Selecciona su registro de SIGAA o marca sin asignar.</span>
+          }
+          @if (asignablesLoading()) { <span>Cargando personas y unidades…</span> }
+          @if (asignablesError()) {
+            <span class="field-error">No se pudieron cargar las personas y unidades.</span>
+            <button type="button" class="btn-filtros" (click)="loadAsignables()">Reintentar</button>
+          }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label" for="inventario-unidad">Unidad administrativa / departamento
+            @if (formTipoAsignacion() === 'UNIDAD') { <span class="required">*</span> }
+          </label>
+          <select id="inventario-unidad" class="modal-select" [ngModel]="formAsignadoUnidadId()"
+            [class.invalid]="formSubmitted() && formTipoAsignacion() === 'UNIDAD' && !formAsignadoUnidadId()"
+            (ngModelChange)="seleccionarUnidad($event)">
+            <option [ngValue]="null">Sin unidad administrativa</option>
+            @for (unidad of unidadesAsignables(); track unidad.id) {
+              <option [ngValue]="unidad.id">{{ unidad.nombre }}</option>
+            }
+          </select>
+          <span class="field-help">Indica la unidad responsable del activo. Es diferente de la oficina, sala o bodega de la ubicación física.</span>
+          @if (!asignablesLoading() && !asignablesError() && unidadesAsignables().length === 0) {
+            <span class="field-error">No hay unidades activas disponibles.</span>
+          }
+          @if (formSubmitted() && formTipoAsignacion() === 'UNIDAD' && !formAsignadoUnidadId()) {
+            <span class="field-error">Selecciona una unidad administrativa.</span>
+          }
+        </div>
+        @if (formTipoAsignacion() === 'PERSONA') {
+          <div class="modal-field">
+            <label class="modal-label" for="inventario-persona">Persona responsable <span class="required">*</span></label>
+            <select id="inventario-persona" class="modal-select" [ngModel]="formAsignadoUsuarioId()"
+              (ngModelChange)="formAsignadoUsuarioId.set($event)" required>
+              <option [ngValue]="null">Selecciona una persona</option>
+              @for (persona of personasAsignables(); track persona.id) {
+                <option [ngValue]="persona.id">{{ persona.nombre }} · #{{ persona.id }}</option>
+              }
+            </select>
+          </div>
+        }
+        <div class="modal-field">
+          <label class="modal-label">Proveedor</label>
+          <input type="text" class="modal-input" placeholder="Nombre del proveedor" maxlength="200" [value]="formProveedor()"
+            (input)="formProveedor.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Estado de funcionamiento <span class="required">*</span></label>
+          <select class="modal-select" required [value]="formEstado()" (change)="formEstado.set($any($event.target).value)">
+            <option value="en buen estado">En buen estado</option>
+            <option value="mantenimiento">Mantenimiento</option>
+            <option value="fuera de servicio">Fuera de servicio</option>
+            <option value="dañado">Dañado</option>
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Descripción</label>
+          <textarea class="modal-textarea" rows="3" placeholder="Descripción del activo" maxlength="5000" [value]="formDescripcion()"
+            (input)="formDescripcion.set($any($event.target).value)"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="requestCloseModal()" [disabled]="saving()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" (click)="guardarActivo()" [disabled]="saving()">
+          <ion-icon name="save-outline" />
+          {{ saving() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Historial -->
+<ion-modal [isOpen]="showHistorialModal()" (didDismiss)="closeHistorialModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Historial de {{ historialActivo()?.nombre || '' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar historial del activo" (click)="closeHistorialModal()"
+            title="Cerrar historial del activo">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div style="padding: 8px 0;">
+        <div class="detail-row">
+          <span class="detail-label">Código</span>
+          <span class="detail-value">{{ historialActivo()?.codigo }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Categoría</span>
+          <span class="detail-value">{{ historialActivo()?.categoria }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Estado actual</span>
+          <span class="detail-value">{{ historialActivo() ? estadoLabel(historialActivo()!.estado) : '' }}</span>
+        </div>
+      </div>
+
+      <div class="historial-timeline">
+        @if (historialLogs().length === 0) {
+        <div style="padding: 24px 12px; text-align: center; color: #64748b;">
+          <ion-icon name="time-outline" style="font-size: 32px; margin-bottom: 8px;" />
+          <p style="margin: 0;">No hay movimientos registrados para este activo.</p>
+        </div>
+        } @else {
+        @for (log of historialLogs(); track log.id; let last = $last) {
+        <div class="timeline-item">
+          <div class="timeline-dot" [style.background]="accionColor(log.accion)">
+            <ion-icon [name]="accionIcon(log.accion)" />
+          </div>
+          @if (!last) { <div class="timeline-line"></div> }
+          <div class="timeline-content">
+            <div class="timeline-header">
+              <span class="timeline-action" [style.color]="accionColor(log.accion)">
+                {{ accionLabel(log.accion) }}
+              </span>
+              <span class="timeline-date">{{ log.fecha | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="timeline-user">{{ log.usuario }}</div>
+            <p class="timeline-detail">{{ log.detalle }}</p>
+          </div>
+        </div>
+        }
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-primary" (click)="closeHistorialModal()">Cerrar</button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

@@ -1,0 +1,23 @@
+<div class="kpis-grid">
+  @for (kpi of kpis(); track kpi.label) {
+    <a class="dashboard-kpi-link" [routerLink]="kpi.route || '/dashboard'" [attr.aria-label]="'Abrir ' + kpi.label">
+    <ion-card class="dashboard-kpi-card">
+      <ion-card-header>
+        <div class="dashboard-kpi-header">
+          <div class="dashboard-kpi-icon" [style.background]="kpi.color + '15'" [style.color]="kpi.color">
+            <ion-icon [name]="kpi.icon" />
+          </div>
+          <span class="dashboard-kpi-trend" [class.up]="kpi.trend === 'up'" [class.down]="kpi.trend === 'down'" [title]="kpi.trendDescription || ''">
+            {{ kpi.trendValue }}
+          </span>
+        </div>
+      </ion-card-header>
+      <ion-card-content>
+        <span class="dashboard-kpi-value">{{ kpi.value }}</span>
+        <span class="dashboard-kpi-label">{{ kpi.label }}</span>
+        <span class="dashboard-kpi-subtitle">{{ kpi.subtitle }}</span>
+      </ion-card-content>
+    </ion-card>
+    </a>
+  }
+</div>

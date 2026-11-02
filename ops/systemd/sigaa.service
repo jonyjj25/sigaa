@@ -1,0 +1,19 @@
+[Unit]
+Description=SIGAA institutional deployment
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# Ajustar al montaje institucional y coordinar su orden también con Docker.
+RequiresMountsFor=/mnt/respaldo-institucional/sigaa
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/srv/sigaa
+ExecStart=/usr/bin/docker compose -p sigaa --env-file /srv/sigaa/.env -f /srv/sigaa/docker-compose.prod.yml --profile observability up -d --wait --wait-timeout 240
+ExecStop=/usr/bin/docker compose -p sigaa --env-file /srv/sigaa/.env -f /srv/sigaa/docker-compose.prod.yml stop -t 120
+TimeoutStartSec=5min
+TimeoutStopSec=3min
+
+[Install]
+WantedBy=multi-user.target

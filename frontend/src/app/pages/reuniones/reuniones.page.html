@@ -1,0 +1,607 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [userPhoto]="authService.currentUser()?.fotografiaRuta || ''"
+    [collapsed]="authService.sidebarCollapsed()" (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <div class="reuniones-content" [class.detail-mode]="detailMode()">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="header-row">
+          <div class="page-heading-copy">
+            <span class="page-eyebrow">Agenda institucional</span>
+            <h1 class="page-title">Reuniones</h1>
+            <p class="page-desc">Gestión y seguimiento de reuniones institucionales</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-card--scheduled">
+          <div class="kpi-icon">
+            <ion-icon name="calendar-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ programadasCount() }}</span>
+            <span class="kpi-label">Reuniones Programadas</span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-card--completed">
+          <div class="kpi-icon">
+            <ion-icon name="checkmark-circle-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ realizadasCount() }}</span>
+            <span class="kpi-label">Reuniones realizadas</span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-card--progress">
+          <div class="kpi-icon">
+            <ion-icon name="time-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ enCursoCount() }}</span>
+            <span class="kpi-label">Reuniones en curso</span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-card--people">
+          <div class="kpi-icon">
+            <ion-icon name="people-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ totalParticipantes() }}</span>
+            <span class="kpi-label">Total participantes</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="meetings-workspace" aria-label="Listado y filtros de reuniones">
+        @if (detailMode()) {
+        <div class="detail-page-nav">
+          <button type="button" class="detail-back-button" (click)="closeDetail()">
+            <ion-icon name="chevron-back-outline" aria-hidden="true" />
+            Volver a reuniones
+          </button>
+          <span>Detalle de reunión</span>
+        </div>
+        }
+        <!-- Tabs -->
+        <div class="tab-bar" role="tablist" aria-label="Filtrar por estado">
+          <button type="button" role="tab" class="tab-btn" [attr.aria-selected]="tabActivo() === 'todas'"
+            [class.active]="tabActivo() === 'todas'" (click)="limpiarFiltros()">Todas las reuniones autorizadas</button>
+          <button type="button" role="tab" class="tab-btn" [attr.aria-selected]="tabActivo() === 'programada'"
+            [class.active]="tabActivo() === 'programada'" (click)="setTab('programada')">Próximas</button>
+          <button type="button" role="tab" class="tab-btn" [attr.aria-selected]="tabActivo() === 'en_curso'"
+            [class.active]="tabActivo() === 'en_curso'" (click)="setTab('en_curso')">En Curso</button>
+          <button type="button" role="tab" class="tab-btn" [attr.aria-selected]="tabActivo() === 'realizada'"
+            [class.active]="tabActivo() === 'realizada'" (click)="setTab('realizada')">Pasadas</button>
+          <button type="button" role="tab" class="tab-btn" [attr.aria-selected]="tabActivo() === 'cancelada'"
+            [class.active]="tabActivo() === 'cancelada'" (click)="setTab('cancelada')">Canceladas</button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-row">
+          <div class="search-box">
+            <ion-icon name="search-outline" />
+            <input type="text" aria-label="Buscar reuniones" placeholder="Buscar reuniones..."
+              [ngModel]="filtroSearch()" (ngModelChange)="filtroSearch.set($event); onFilterChange()" />
+          </div>
+          <div class="filter-selects">
+            <select aria-label="Filtrar por área" [ngModel]="filtroTipo()"
+              (ngModelChange)="filtroTipo.set($event); onFilterChange()">
+              @for (opt of tipoOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+            </select>
+            <select aria-label="Filtrar por estado" [ngModel]="filtroEstado()"
+              (ngModelChange)="filtroEstado.set($event); onFilterChange()">
+              @for (opt of estadoOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+            </select>
+            <input aria-label="Filtrar por fecha" type="date" [ngModel]="filtroFecha()"
+              (ngModelChange)="filtroFecha.set($event); onFilterChange()" />
+            <button class="btn-mas-filtros" (click)="limpiarFiltros()">
+              <ion-icon name="filter-outline" /> Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- Botón Nueva Reunión -->
+        <div class="section-header">
+          <h3>Reuniones ({{ reunionesFiltradas().length }})</h3>
+          @if (can('Crear')) {
+          <button class="btn-primary" (click)="openNewModal()">
+            <ion-icon name="add-outline" /> Nueva reunión
+          </button>
+          }
+        </div>
+
+        @if (loading()) {
+        <div class="loading-skeleton" aria-label="Cargando reuniones" role="status">
+          @for (line of [1, 2, 3, 4, 5, 6]; track line) { <span class="loading-skeleton__line"></span> }
+        </div>
+        } @else if (loadError()) {
+        <div class="content-feedback" role="alert">
+          <h3>No pudimos cargar las reuniones</h3>
+          <p>Verifica tu conexión e intenta nuevamente.</p>
+          <button class="btn-primary" type="button" (click)="retryLoad()">Reintentar</button>
+        </div>
+        }
+
+        <!-- Grid: Tabla + Detalle -->
+        @if (!loading() && !loadError()) { <div class="reuniones-grid">
+
+          <!-- Columna izquierda: Tabla -->
+          <div class="reuniones-table-col">
+            <div class="table-container">
+              <table>
+                <colgroup>
+                  <col class="meeting-col-code" />
+                  <col class="meeting-col-date" />
+                  <col class="meeting-col-title" />
+                  <col class="meeting-col-area" />
+                  <col class="meeting-col-location" />
+                  <col class="meeting-col-status" />
+                  <col class="meeting-col-actions" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Fecha y Hora</th>
+                    <th>Reunión</th>
+                    <th>Área / Organizador</th>
+                    <th>Lugar y Modalidad</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of paginatedReuniones(); track item.id) {
+                  <tr [class.selected]="selectedReunion()?.id === item.id" (click)="selectReunion(item)">
+                    <td class="codigo-cell">
+                      <span class="codigo-tag">{{ item.codigo }}</span>
+                    </td>
+                    <td class="date-cell">
+                      <span class="date-badge">{{ formatFecha(item.fecha) }}</span>
+                      <span class="time-text">{{ item.horaInicio }} - {{ item.horaFin }}</span>
+                    </td>
+                    <td>
+                      <span class="reunion-titulo">{{ item.titulo }}</span>
+                      <span class="reunion-sub">{{ item.subtitulo }}</span>
+                    </td>
+                    <td>
+                      <span class="area-text">{{ item.area }}</span>
+                      <span class="org-text">{{ item.organizador }}</span>
+                    </td>
+                    <td>
+                      <span class="lugar-text">
+                        <ion-icon aria-hidden="true"
+                          [name]="item.modalidad === 'Virtual' ? 'videocam-outline' : item.modalidad === 'Mixta' ? 'business-outline' : 'location-outline'" />
+                        <span>{{ (item.lugar || '').trim() || (item.modalidad === 'Virtual' ? 'Reunión virtual' : 'Lugar no especificado') }}</span>
+                      </span>
+                      <span class="modalidad-tag"
+                        [style.background]="item.modalidad === 'Virtual' ? 'var(--brand-soft)' : item.modalidad === 'Mixta' ? 'var(--state-warning-bg)' : 'var(--state-success-bg)'"
+                        [style.color]="item.modalidad === 'Virtual' ? 'var(--state-info-text)' : item.modalidad === 'Mixta' ? 'var(--state-warning-text)' : 'var(--state-success-text)'">
+                        {{ item.modalidad }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="estado-badge" [style.background]="estadoBg(item.estado)"
+                        [style.color]="estadoColor(item.estado)">
+                        {{ estadoLabel(item.estado) }}
+                      </span>
+                    </td>
+                    <td class="actions-cell" (click)="$event.stopPropagation()">
+                      <button type="button" class="btn-icon table-open-button" (click)="selectReunion(item)"
+                        [attr.aria-label]="'Abrir ' + item.titulo" [title]="'Abrir detalle de ' + item.titulo">
+                        <ion-icon name="eye-outline" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                  } @empty {
+                  <tr>
+                    <td colspan="7" class="empty-cell">
+                      <div class="empty-state-inline">
+                        <ion-icon name="calendar-outline" />
+                        <strong>No se encontraron reuniones</strong>
+                        <span>Prueba con otros filtros o limpia la búsqueda.</span>
+                        <button type="button" (click)="limpiarFiltros()">Limpiar filtros</button>
+                      </div>
+                    </td>
+                  </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Paginación -->
+            @if (totalPages().length > 1) {
+            <div class="pagination">
+              <div class="page-btns">
+                <button class="page-btn" type="button" aria-label="Página anterior" [disabled]="currentPage() === 1"
+                  (click)="goToPage(currentPage() - 1)" title="Página anterior">
+                  <ion-icon name="chevron-back-outline" />
+                </button>
+                @for (page of totalPages(); track page) {
+                <button class="page-btn" [class.active]="currentPage() === page" (click)="goToPage(page)">{{ page
+                  }}</button>
+                }
+                <button class="page-btn" type="button" aria-label="Página siguiente"
+                  [disabled]="currentPage() === totalPages().length" (click)="goToPage(currentPage() + 1)"
+                  title="Página siguiente">
+                  <ion-icon name="chevron-forward-outline" />
+                </button>
+              </div>
+            </div>
+            }
+
+          </div>
+
+          <!-- Columna derecha: Detalle -->
+          <div class="reuniones-detail-col">
+            @if (selectedReunion(); as item) {
+            <div class="detail-card">
+              <div class="detail-header">
+                <div class="detail-header-info">
+                  <div class="detail-header-meta">
+                    <span class="detail-codigo">{{ item.codigo }}</span>
+                    <span class="estado-badge detail-estado" [style.background]="estadoBg(item.estado)"
+                      [style.color]="estadoColor(item.estado)">
+                      {{ estadoLabel(item.estado) }}
+                    </span>
+                  </div>
+                  <h4>{{ item.titulo }}</h4>
+                  @if (item.descripcion) { <span class="detail-sub">{{ item.descripcion }}</span> }
+                </div>
+                <button class="btn-close" type="button" aria-label="Cerrar detalle de reunión" (click)="closeDetail()"
+                  title="Cerrar detalle de reunión">
+                  <ion-icon name="close-outline" />
+                </button>
+              </div>
+              <div class="detail-body">
+                <div class="detail-row">
+                  <div class="detail-field">
+                    <span class="field-label">Fecha</span>
+                    <span class="field-value">{{ formatFechaLarga(item.fecha) }}</span>
+                  </div>
+                  <div class="detail-field">
+                    <span class="field-label">Horario</span>
+                    <span class="field-value">{{ item.horaInicio }}–{{ item.horaFin }}</span>
+                  </div>
+                </div>
+                <div class="detail-row">
+                  @if (item.area) {
+                  <div class="detail-field">
+                    <span class="field-label">Área</span>
+                    <span class="field-value">{{ item.area }}</span>
+                  </div>
+                  }
+                  <div class="detail-field" [class.detail-field-full]="!item.area">
+                    <span class="field-label">Organizador</span>
+                    <span class="field-value">{{ item.organizador }}</span>
+                  </div>
+                </div>
+                <div class="detail-row">
+                  @if (item.lugar) {
+                  <div class="detail-field">
+                    <span class="field-label">Lugar</span>
+                    <span class="field-value">{{ item.lugar }}</span>
+                  </div>
+                  }
+                  <div class="detail-field" [class.detail-field-full]="!item.lugar">
+                    <span class="field-label">Participantes</span>
+                    <span class="field-value">{{ item.participantes > 0 ? item.participantes + ' participante' +
+                      (item.participantes === 1 ? '' : 's') : 'Sin participantes' }}</span>
+                  </div>
+                </div>
+                @if (item.objetivo) {
+                <div class="detail-row">
+                  <div class="detail-field detail-field-full">
+                    <span class="field-label">Objetivo</span>
+                    <span class="field-value">{{ item.objetivo }}</span>
+                  </div>
+                </div>
+                }
+                @if (item.tipoReunion || item.modalidad) {
+                <div class="detail-row">
+                  @if (item.tipoReunion) {
+                  <div class="detail-field" [class.detail-field-full]="!item.modalidad">
+                    <span class="field-label">Tipo</span>
+                    <span class="field-value">{{ formatTipo(item.tipoReunion) }}</span>
+                  </div>
+                  }
+                  @if (item.modalidad) {
+                  <div class="detail-field" [class.detail-field-full]="!item.tipoReunion">
+                    <span class="field-label">Modalidad</span>
+                    <span class="field-value">{{ item.modalidad }}</span>
+                  </div>
+                  }
+                </div>
+                }
+                @if (item.sala) {
+                <div class="detail-row">
+                  <div class="detail-field detail-field-full">
+                    <span class="field-label">Sala</span>
+                    <span class="field-value">{{ item.sala }}</span>
+                  </div>
+                </div>
+                }
+                @if (item.enlaceVirtual) {
+                <div class="detail-row">
+                  <div class="detail-field detail-field-full">
+                    <span class="field-label">Enlace Virtual</span>
+                    <span class="field-value"><a [href]="item.enlaceVirtual" target="_blank" class="link-externo">{{
+                        item.enlaceVirtual }}</a></span>
+                  </div>
+                </div>
+                }
+                @if (item.unidadResponsable) {
+                <div class="detail-row">
+                  <div class="detail-field">
+                    <span class="field-label">Unidad Responsable</span>
+                    <span class="field-value">{{ item.unidadResponsable }}</span>
+                  </div>
+                  @if (item.organizacion) {
+                  <div class="detail-field">
+                    <span class="field-label">Organización</span>
+                    <span class="field-value">{{ item.organizacion }}</span>
+                  </div>
+                  }
+                </div>
+                }
+                @if (item.observaciones) {
+                <div class="detail-row">
+                  <div class="detail-field detail-field-full">
+                    <span class="field-label">Observaciones</span>
+                    <span class="field-value">{{ item.observaciones }}</span>
+                  </div>
+                </div>
+                }
+                <div class="detail-actions">
+                  <div class="detail-actions-primary">
+                    @if (can('Editar') && item.puedeEditar !== false) { <button class="btn-outline" (click)="openEditModal(item)"><ion-icon
+                        name="create-outline" /> Editar</button> }
+                    @if (can('Iniciar') && item.puedeIniciar !== false && item.estado === 'programada') {
+                    <button class="btn-primary-action" [disabled]="cambiandoEstado().has(item.id)" (click)="iniciarReunion(item.id)"><ion-icon
+                        name="play-outline" /> Iniciar</button>
+                    }
+                    @if (can('Iniciar') && item.puedeFinalizar !== false && item.estado === 'en_curso') {
+                    <button class="btn-primary-action" [disabled]="cambiandoEstado().has(item.id)" (click)="finalizarReunion(item.id)"><ion-icon
+                        name="checkmark-circle-outline" /> Finalizar</button>
+                    }
+                    @if (can('Ver') || can('Gestionar participantes')) {
+                    <button class="btn-outline"
+                      (click)="openParticipantesModal(item.participantesNombres ?? [])"><ion-icon
+                        name="people-outline" /> {{ item.participantes > 0 ? 'Participantes (' + item.participantes +
+                      ')' : 'Ver participantes' }}</button>
+                    }
+                  </div>
+                  @if (can('Duplicar') || authService.isSuperAdmin() || can('Generar acta') || can('Ver tareas') ||
+                  can('Cancelar') || can('Eliminar')) {
+                  <button type="button" class="btn-outline" (click)="abrirMasAcciones(item)">
+                    <ion-icon name="ellipsis-vertical-outline" aria-hidden="true" /> Más acciones
+                  </button>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+
+        </div> }
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal Nueva / Editar Reunión -->
+<ion-modal class="reunion-form-modal form-modal" [isOpen]="showModal()" [canDismiss]="canDismissModal"
+  (didDismiss)="closeModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar class="modal-toolbar">
+        <ion-title>{{ editandoId() ? 'Editar Reunión' : 'Nueva Reunión' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar formulario de reunión" (click)="requestCloseModal()"
+            title="Cerrar formulario de reunión">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body" (input)="formDirty.set(true)" (change)="formDirty.set(true)">
+      @if (formSubmitted() && !camposObligatoriosCompletos()) { <p class="field-error" role="alert">Completa los campos
+        obligatorios para guardar la reunión.</p> }
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Título de la Reunión <span class="required">*</span></label>
+          <input type="text" class="modal-input" placeholder="Ej: Reunión de coordinación"
+            [class.invalid]="formSubmitted() && !nuevoTitulo()" [value]="nuevoTitulo()"
+            (input)="nuevoTitulo.set($any($event.target).value)" required />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Tipo de Reunión</label>
+          <select class="modal-select" [value]="nuevoTipoReunion()"
+            (change)="nuevoTipoReunion.set($any($event.target).value)">
+            <option value="">Seleccione</option>
+            <option value="ordinaria">Ordinaria</option>
+            <option value="extraordinaria">Extraordinaria</option>
+            <option value="comite">Comité</option>
+            <option value="directiva">Directiva</option>
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Descripción</label>
+          <textarea class="modal-textarea" rows="2" placeholder="Descripción de la reunión" [value]="nuevoDescripcion()"
+            (input)="nuevoDescripcion.set($any($event.target).value)"></textarea>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Fecha <span class="required">*</span></label>
+          <input type="date" class="modal-input" [class.invalid]="formSubmitted() && !nuevoFecha()"
+            [value]="nuevoFecha()" (input)="nuevoFecha.set($any($event.target).value)" required />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Hora Inicio <span class="required">*</span></label>
+          <input type="time" class="modal-input" [class.invalid]="formSubmitted() && !horarioValido()"
+            [value]="horaInput(nuevoHoraInicioHora(), nuevoHoraInicioMin(), nuevoHoraInicioAmPm())"
+            (input)="setHoraInicio($any($event.target).value)" required />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Hora Fin <span class="required">*</span></label>
+          <input type="time" class="modal-input" [class.invalid]="formSubmitted() && !horarioValido()"
+            [value]="horaInput(nuevoHoraFinHora(), nuevoHoraFinMin(), nuevoHoraFinAmPm())"
+            [min]="horaInput(nuevoHoraInicioHora(), nuevoHoraInicioMin(), nuevoHoraInicioAmPm())"
+            (input)="setHoraFin($any($event.target).value)" required />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Modalidad<span class="required">*</span></label>
+          <select class="modal-select" [class.invalid]="formSubmitted() && !nuevoModalidad()" [value]="nuevoModalidad()"
+            (change)="nuevoModalidad.set($any($event.target).value)" required>
+            <option value="">Seleccione</option>
+            <option value="Presencial">Presencial</option>
+            <option value="Virtual">Virtual</option>
+            <option value="Mixta">Mixta</option>
+          </select>
+        </div>
+        @if (editandoId()) {<div class="modal-field"><label class="modal-label">Estado</label><select
+            class="modal-select" [value]="nuevoEstado()" (change)="nuevoEstado.set($any($event.target).value)">
+            <option value="programada" [disabled]="!estadoSeleccionable('programada')">Programada</option>
+            <option value="en_curso" [disabled]="!estadoSeleccionable('en_curso')">En curso</option>
+            <option value="realizada" [disabled]="!estadoSeleccionable('realizada')">Realizada</option>
+            <option value="cancelada" [disabled]="!estadoSeleccionable('cancelada')">Cancelada</option>
+          </select></div>}
+        @if (formSubmitted() && !horarioValido()) { <p class="field-error modal-field-full" role="alert">La hora de fin
+          debe ser posterior a la hora de inicio.</p> }
+        <div class="modal-field">
+          <label class="modal-label">Convocado por</label>
+          <input type="text" class="modal-input" [value]="nuevoOrganizador()" readonly />
+        </div>
+        @if (muestraLugar()) {
+        <div class="modal-field">
+          <label class="modal-label">Lugar</label>
+          <input type="text" class="modal-input" placeholder="Ej: Sala de reuniones" [value]="nuevoLugar()"
+            (input)="nuevoLugar.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Sala</label>
+          <input type="text" class="modal-input" placeholder="Ej: Sala 301" [value]="nuevoSala()"
+            (input)="nuevoSala.set($any($event.target).value)" />
+        </div>
+        }
+        @if (muestraEnlaceVirtual()) {
+        <div class="modal-field">
+          <label class="modal-label">Enlace Virtual</label>
+          <input type="url" class="modal-input" placeholder="https://..." [value]="nuevoEnlaceVirtual()"
+            (input)="nuevoEnlaceVirtual.set($any($event.target).value)" />
+        </div>
+        }
+        <div class="modal-field">
+          <label class="modal-label">Institución</label>
+          <select class="modal-select" [ngModel]="nuevoOrganizacion()" (ngModelChange)="nuevoOrganizacion.set($event)">
+            <option value="">Seleccione una institución</option>
+            @if (institucionLegada()) { <option [value]="nuevoOrganizacion()">{{ nuevoOrganizacion() }} (registro existente)</option> }
+            @for (institucion of instituciones(); track institucion.id) {
+              <option [value]="institucion.nombre">{{ institucion.nombre }}</option>
+            }
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Unidades de la reunión</label>
+          <select class="modal-select" (change)="agregarUnidad($event)" aria-label="Agregar unidad de coordinación">
+            <option value="">Agregar una unidad manualmente</option>
+            @for (unidad of unidades(); track unidad.id) { <option [value]="unidad.id">{{ unidad.nombre }}</option> }
+          </select>
+          <small>Se incluyen las unidades de los participantes. Esta selección no concede permisos de acceso.</small>
+          <div class="participante-tags">
+            @for (id of unidadesSeleccionadas(); track id) {
+              <span class="tag">{{ nombreUnidad(id) }}<button type="button" class="tag-remove"
+                [disabled]="unidadesAutomaticas().includes(id)" (click)="quitarUnidad(id)"
+                [attr.aria-label]="'Quitar unidad ' + nombreUnidad(id)" [title]="'Quitar unidad ' + nombreUnidad(id)"><ion-icon name="close-outline" /></button></span>
+            }
+          </div>
+          @if (catalogoError()) { <p class="field-error" role="alert">No se pudieron cargar los catálogos.
+            <button type="button" (click)="cargarCatalogos()">Reintentar</button></p> }
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Participantes</label>
+          <select class="modal-select" (change)="agregarParticipante($event)">
+            <option value="">Seleccione un participante</option>
+            @for (u of usuarios(); track u.id) {
+            <option [value]="valorParticipante(u)">{{ nombreUsuario(u) }}</option>
+            }
+          </select>
+          @if (selectedParticipantes().length > 0) {
+          <div class="participante-tags">
+            @for (p of selectedParticipantes(); track p) {
+            <span class="tag">{{ nombreParticipante(p) }}<button type="button" class="tag-remove"
+                [disabled]="esCreadorAutomatico(p)"
+                [attr.aria-label]="'Quitar participante ' + nombreParticipante(p)" (click)="quitarParticipante(p)"
+                [title]="esCreadorAutomatico(p) ? 'Participación automática del creador' : 'Quitar participante ' + nombreParticipante(p)"><ion-icon name="close-outline"
+                  aria-hidden="true" /></button></span>
+            }
+          </div>
+          }
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="requestCloseModal()">
+          <ion-icon name="close-outline" /> Cancelar
+        </button>
+        <button class="btn-primary" [disabled]="saving()" (click)="guardarReunion()">
+          @if (saving()) {
+          <span class="spinner-small"></span>
+          }
+          {{ editandoId() ? 'Actualizar' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- Modal Ver Participantes -->
+<ion-modal class="participantes-modal" [isOpen]="showParticipantesModal()" (didDismiss)="closeParticipantesModal()"
+  aria-labelledby="participantes-modal-title">
+  <ng-template>
+    <section class="participantes-modal__panel">
+    <header class="participantes-modal__header">
+      <span class="participantes-modal__icon" aria-hidden="true"><ion-icon name="people-outline" /></span>
+      <div class="participantes-modal__heading">
+        <span>Reunión</span>
+        <h2 id="participantes-modal-title">Participantes</h2>
+      </div>
+      <button type="button" class="participantes-modal__close" aria-label="Cerrar participantes"
+        (click)="closeParticipantesModal()" title="Cerrar participantes"><ion-icon name="close-outline" aria-hidden="true" /></button>
+    </header>
+    <div class="participantes-modal__content">
+      @if (participantesActuales().length > 0) {
+      <div class="participantes-modal__summary">
+        <span>Participantes registrados</span>
+        <strong>{{ participantesActuales().length }}</strong>
+      </div>
+      <ul class="participantes-list" aria-label="Participantes registrados">
+        @for (nombre of participantesActuales(); track nombre) {
+        <li class="participante-item">
+          <span class="participante-avatar" aria-hidden="true">{{ iniciales(nombre) }}</span>
+          <span class="participante-nombre">{{ nombre }}</span>
+        </li>
+        }
+      </ul>
+      } @else {
+      <div class="participantes-empty" role="status">
+        <span class="participantes-empty__icon" aria-hidden="true"><ion-icon name="people-outline" /></span>
+        <h3>Aún no hay participantes</h3>
+        <p>Podrás agregarlos al editar esta reunión.</p>
+      </div>
+      }
+    </div>
+    <footer class="participantes-modal__footer">
+      <button type="button" class="participantes-modal__done" (click)="closeParticipantesModal()">Cerrar</button>
+    </footer>
+    </section>
+  </ng-template>
+</ion-modal>

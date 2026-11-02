@@ -1,0 +1,402 @@
+<app-dashboard-sidebar
+  [items]="menuItems()"
+  [collapsed]="authService.sidebarCollapsed()"
+  (logout)="onLogout()"
+/>
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar
+    [notifications]="notifications()"
+    [userName]="currentUser()?.nombre || ''"
+    [userRole]="currentUser()?.roles || ''"
+    [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()"
+    (logout)="onLogout()"
+  />
+
+  <main class="dashboard-main">
+    <div class="form-page">
+
+      <div class="page-header">
+        <div class="header-left">
+      <button class="btn-back" type="button" aria-label="Volver al listado de actas" (click)="volver()" title="Volver">
+            <ion-icon name="arrow-back-outline" />
+          </button>
+          <div>
+            <h1 class="page-title">{{ esEdicion() ? 'Editar Acta de Reunión' : 'Nueva Acta de Reunión' }}</h1>
+            <p class="page-desc">{{ esEdicion() ? 'Modifica los datos del acta de reunión.' : 'Registra los temas tratados, acuerdos y compromisos de la reunión.' }}</p>
+          </div>
+        </div>
+        <div class="header-actions-top">
+          <button class="btn-secondary" [disabled]="!puedeGuardar()" (click)="guardarBorrador()">
+            <ion-icon name="save-outline" />
+            Guardar borrador
+          </button>
+          <button class="btn-primary" [disabled]="!puedeGuardar()" (click)="guardar()">
+            <ion-icon name="checkmark-outline" />
+            {{ esEdicion() ? 'Guardar y terminar acta' : 'Guardar y terminar acta' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="content-grid">
+
+        <div class="col-left">
+
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="information-circle-outline" style="color:var(--institutional-blue);" />
+              Información de la reunión
+            </h3>
+            <div class="card-body">
+              <div class="field-row">
+                <label class="field-label">Título de la reunión *</label>
+                <input type="text" class="field-input" placeholder="Ej: Reunión de planificación"
+                  [value]="formTitulo()" (input)="formTitulo.set($any($event.target).value)" />
+              </div>
+              <div class="field-row">
+                <label class="field-label">Tipo de reunión *</label>
+                <select class="field-select" [value]="formTipo()" (change)="formTipo.set($any($event.target).value)">
+                  <option value="">Seleccionar tipo</option>
+                  <option value="Ordinaria">Ordinaria</option>
+                  <option value="Extraordinaria">Extraordinaria</option>
+                  <option value="Comité">Comité</option>
+                  <option value="Consejo">Consejo</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label class="field-label">Fecha *</label>
+                <input type="date" class="field-input"
+                  [value]="formFecha()" (input)="formFecha.set($any($event.target).value)" />
+              </div>
+              <div class="field-row">
+                <label class="field-label">Hora</label>
+                <input type="time" class="field-input"
+                  [value]="formHora()" (input)="formHora.set($any($event.target).value)" />
+              </div>
+              <div class="field-row">
+                <label class="field-label">Lugar</label>
+                <input type="text" class="field-input" placeholder="Ej: Sala de juntas"
+                  [value]="formLugar()" (input)="formLugar.set($any($event.target).value)" />
+              </div>
+              <div class="field-row">
+                <label class="field-label">Modalidad</label>
+                <select class="field-select" [value]="formModalidad()" (change)="formModalidad.set($any($event.target).value)">
+                  <option value="Presencial">Presencial</option>
+                  <option value="Virtual">Virtual</option>
+                  <option value="Híbrida">Híbrida</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label class="field-label">Convocada por</label>
+                <select class="field-select" [value]="formResponsable()" (change)="formResponsable.set($any($event.target).value)">
+                  <option value="">Seleccione un responsable</option>
+                  @for (persona of responsables(); track persona.nombre) {
+                    <option [value]="persona.nombre">{{ persona.nombre }}@if (persona.cargo) { — {{ persona.cargo }} }</option>
+                  }
+                </select>
+              </div>
+
+              <div class="field-divider"></div>
+              <div class="field-row">
+                <label class="field-label checkbox-label">
+                  <input type="checkbox"
+                    [checked]="formVincularSesion()"
+                    (change)="formVincularSesion.set($any($event.target).checked)" />
+                  Vincular sesión de asistencia QR
+                </label>
+              </div>
+              @if (formVincularSesion()) {
+                <div class="field-row">
+                  <label class="field-label">Tipo de vinculación</label>
+                  <select class="field-select"
+                    [value]="formSesionExistente() ? 'existente' : 'nueva'"
+                    (change)="formSesionExistente.set($any($event.target).value === 'existente')">
+                    <option value="nueva">Crear nueva sesión automáticamente</option>
+                    <option value="existente">Vincular sesión existente</option>
+                  </select>
+                </div>
+                @if (formSesionExistente()) {
+                  <div class="field-row">
+                    <label class="field-label">Seleccionar sesión</label>
+                    <select class="field-select"
+                      [value]="formSesionId()"
+                      (change)="formSesionId.set($any($event.target).value)">
+                      <option value="">-- Seleccionar sesión --</option>
+                      @for (s of sesionesDisponibles(); track s.id) {
+                        <option [value]="s.id">{{ s.nombre }} ({{ s.codigo }})</option>
+                      }
+                    </select>
+                  </div>
+                } @else {
+                  <div class="session-hint">
+                    <ion-icon name="information-circle-outline" />
+                    Se creará una sesión QR automáticamente con el título y fecha del acta. El código QR se generará en la página de Asistencia QR.
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="people-outline" style="color:var(--institutional-blue);" />
+              Institución Participantes
+            </h3>
+            <div class="card-body">
+              <div class="field-row">
+                <label class="field-label" for="institucion-participantes">Nombre de la institución</label>
+                <input
+                  id="institucion-participantes"
+                  type="text"
+                  class="field-input"
+                  maxlength="300"
+                  placeholder="Ej: Ministerio de Seguridad Pública"
+                  [value]="formInstitucionParticipantes()"
+                  (input)="formInstitucionParticipantes.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="list-outline" style="color:var(--institutional-blue);" />
+              Orden del día
+            </h3>
+            <div class="card-body">
+              @if (ordenDia().length > 0) {
+                <div class="orden-list">
+                  @for (item of ordenDia(); track $index) {
+                    <div class="orden-item">
+                      <span class="orden-num">{{ $index + 1 }}.</span>
+                      <input type="text" class="orden-input" placeholder="Escribir tema..."
+                        [value]="item" (input)="actualizarPunto($index, $any($event.target).value)" />
+                      <div class="orden-actions">
+                        <button class="btn-icon-sm" type="button" title="Subir" aria-label="Subir punto del orden del día" [disabled]="$index === 0" (click)="moverPunto($index, -1)">
+                          <ion-icon name="chevron-up-outline" />
+                        </button>
+                        <button class="btn-icon-sm" type="button" title="Bajar" aria-label="Bajar punto del orden del día" [disabled]="$index === ordenDia().length - 1" (click)="moverPunto($index, 1)">
+                          <ion-icon name="chevron-down-outline" />
+                        </button>
+                        <button class="btn-icon-sm" type="button" title="Eliminar" aria-label="Eliminar punto del orden del día" (click)="eliminarPunto($index)">
+                          <ion-icon name="trash-outline" style="color:#ef4444;" />
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+              <button class="btn-add-row" (click)="agregarPunto()">
+                <ion-icon name="add-outline" />
+                Agregar punto
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-center">
+
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="create-outline" style="color:var(--institutional-blue);" />
+              Desarrollo de la reunión
+            </h3>
+            <div class="card-body">
+              <textarea class="editor-textarea" rows="6" placeholder="Describe el desarrollo de la reunión..."
+                [value]="formObjetivos()" (input)="formObjetivos.set($any($event.target).value)"></textarea>
+            </div>
+          </div>
+
+          <div class="cards-row">
+
+            <div class="card half-card">
+              <h3 class="card-title-section">
+                <ion-icon name="checkmark-circle-outline" style="color:#16a34a;" />
+                Acuerdos
+              </h3>
+              <div class="card-body">
+                @if (acuerdos().length > 0) {
+                  <table class="table-mini">
+                    <thead>
+                      <tr><th>#</th><th>Acuerdo</th><th>Responsable</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      @for (a of acuerdos(); track $index) {
+                        <tr>
+                          <td>{{ $index + 1 }}</td>
+                          <td class="cell-acuerdo">{{ a.descripcion }}</td>
+                          <td>{{ a.responsable }}</td>
+                          <td>
+                            <button class="btn-icon-sm" type="button" (click)="eliminarAcuerdo($index)" title="Eliminar" aria-label="Eliminar acuerdo">
+                              <ion-icon name="trash-outline" style="color:#ef4444;" />
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+                <div class="add-row-form">
+                  <textarea class="field-input-sm field-description" rows="3" placeholder="Acuerdo *"
+                    [value]="nuevoAcuerdoDesc()" (input)="nuevoAcuerdoDesc.set($any($event.target).value)"></textarea>
+                  <select class="field-input-sm" [value]="nuevoAcuerdoResp()" (change)="nuevoAcuerdoResp.set($any($event.target).value)">
+                    <option value="">Responsable</option>
+                    @for (persona of responsables(); track persona.nombre) {
+                      <option [value]="persona.nombre">{{ persona.nombre }}@if (persona.cargo) { — {{ persona.cargo }} }</option>
+                    }
+                  </select>
+                  <button class="btn-add-row" (click)="agregarAcuerdo()">
+                    <ion-icon name="add-outline" />
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card half-card">
+              <h3 class="card-title-section">
+                <ion-icon name="flag-outline" style="color:#d97706;" />
+                Compromisos y tareas
+              </h3>
+              <div class="card-body">
+                @if (compromisos().length > 0) {
+                  <table class="table-mini">
+                    <thead>
+                      <tr><th>Actividad</th><th>Responsable</th><th>Estado</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      @for (c of compromisos(); track $index) {
+                        <tr>
+                          <td class="cell-acuerdo">{{ c.actividad }}</td>
+                          <td>{{ c.responsable }}</td>
+                          <td><span class="badge badge-pendiente">{{ c.estado }}</span></td>
+                          <td>
+                            <button class="btn-icon-sm" type="button" (click)="eliminarCompromiso($index)" title="Eliminar" aria-label="Eliminar compromiso">
+                              <ion-icon name="trash-outline" style="color:#ef4444;" />
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+                <div class="add-row-form">
+                  <textarea class="field-input-sm field-description" rows="3" placeholder="Actividad *"
+                    [value]="nuevoCompActividad()" (input)="nuevoCompActividad.set($any($event.target).value)"></textarea>
+                  <select class="field-input-sm" [value]="nuevoCompResp()" (change)="nuevoCompResp.set($any($event.target).value)">
+                    <option value="">Responsable</option>
+                    @for (persona of responsables(); track persona.nombre) {
+                      <option [value]="persona.nombre">{{ persona.nombre }}@if (persona.cargo) { — {{ persona.cargo }} }</option>
+                    }
+                  </select>
+                  <button class="btn-add-row" (click)="agregarCompromiso()">
+                    <ion-icon name="add-outline" />
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="attach-outline" style="color:var(--institutional-blue);" />
+              Adjuntos
+            </h3>
+            <div class="card-body">
+              <input #fileInput type="file" multiple hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.zip,.rar" (change)="onFileSelected($event)" />
+              <div class="dropzone" (click)="triggerFileInput()">
+                <ion-icon name="cloud-upload-outline" class="dropzone-icon" />
+                <p class="dropzone-text">Arrastra archivos aquí o <span class="dropzone-link">examina</span></p>
+                <p class="dropzone-hint">PDF, Word, Excel, PowerPoint, imágenes y archivos comprimidos (máx. 10 MB)</p>
+              </div>
+              @if (adjuntos().length > 0) {
+                <div class="adjuntos-list">
+                  @for (f of adjuntos(); track $index) {
+                    <div class="adjunto-item">
+                      <div class="adjunto-icon" [class]="'file-' + f.tipo">
+                        <ion-icon [name]="getFileIcon(f.tipo)" />
+                      </div>
+                      <div class="adjunto-info">
+                        <span class="adjunto-nombre">{{ f.nombre }}</span>
+                        <span class="adjunto-tamano">{{ f.tamano }}</span>
+                      </div>
+                      <button class="btn-icon-sm" type="button" (click)="eliminarAdjunto($index)" title="Eliminar" aria-label="Eliminar archivo adjunto">
+                        <ion-icon name="trash-outline" style="color:#ef4444;" />
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="col-right">
+          <div class="card">
+            <h3 class="card-title-section">
+              <ion-icon name="grid-outline" style="color:var(--institutional-blue);" />
+              Resumen del acta
+            </h3>
+            <div class="card-body">
+              <div class="resumen-list">
+                <div class="resumen-item">
+                  <div class="ri-icon" style="background:var(--brand-soft);color:var(--institutional-blue);">
+                    <ion-icon name="people-outline" />
+                  </div>
+                  <div class="ri-body">
+                    <span class="ri-value">{{ participantes().length }}</span>
+                    <span class="ri-label">Participantes</span>
+                  </div>
+                </div>
+                <div class="resumen-item">
+                  <div class="ri-icon" style="background:#fef3c7;color:#d97706;">
+                    <ion-icon name="list-outline" />
+                  </div>
+                  <div class="ri-body">
+                    <span class="ri-value">{{ ordenDia().length }}</span>
+                    <span class="ri-label">Temas tratados</span>
+                  </div>
+                </div>
+                <div class="resumen-item">
+                  <div class="ri-icon" style="background:#ecfdf5;color:#16a34a;">
+                    <ion-icon name="checkmark-circle-outline" />
+                  </div>
+                  <div class="ri-body">
+                    <span class="ri-value">{{ acuerdos().length }}</span>
+                    <span class="ri-label">Acuerdos</span>
+                  </div>
+                </div>
+                <div class="resumen-item">
+                  <div class="ri-icon" style="background:#f0f9ff;color:var(--institutional-blue);">
+                    <ion-icon name="flag-outline" />
+                  </div>
+                  <div class="ri-body">
+                    <span class="ri-value">{{ compromisos().length }}</span>
+                    <span class="ri-label">Compromisos</span>
+                  </div>
+                </div>
+                <div class="resumen-item">
+                  <div class="ri-icon" style="background:#f3e8ff;color:#9333ea;">
+                    <ion-icon name="attach-outline" />
+                  </div>
+                  <div class="ri-body">
+                    <span class="ri-value">{{ adjuntos().length }}</span>
+                    <span class="ri-label">Adjuntos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card card-tip">
+            <div class="tip-header">
+              <div class="tip-icon">
+                <ion-icon name="bulb-outline" />
+              </div>
+              <div>
+                <h4 class="tip-title">Tip</h4>
+                <p class="tip-text">Puedes guardar borradores y continuar editando más tarde.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

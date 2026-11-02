@@ -1,0 +1,89 @@
+name: sigaa-recuperacion
+services:
+  db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Configure una BD de recuperación}
+      POSTGRES_USER: ${POSTGRES_USER:?Configure el inicializador aislado}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure una clave distinta de producción}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Configure runtime aislado}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?Configure respaldo aislado}
+    command: ["postgres", "-c", "timezone=America/Panama"]
+    volumes:
+      - postgres_recovery:/var/lib/postgresql
+      - ./postgres/010-sigaa-roles.sh:/docker-entrypoint-initdb.d/010-sigaa-roles.sh:ro
+      - ./postgres/provision-roles.sql:/opt/sigaa/provision-roles.sql:ro
+      - ./postgres/grant-application-access.sql:/opt/sigaa/grant-application-access.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [isolated]
+  api:
+    build: ../backend/sigaa-api
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USERNAME: sigaa_runtime
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      BACKUP_DB_USERNAME: sigaa_backup
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Configure un secreto aislado}
+      AUTH_COOKIE_SECURE: "true"
+      CORS_ALLOWED_ORIGINS: https://recovery.invalid,https://localhost
+      QR_PUBLIC_URL: https://recovery.invalid
+      APP_TIME_ZONE: America/Panama
+      JAVA_TOOL_OPTIONS: -Duser.timezone=America/Panama
+      MAIL_HOST: ""
+      MAIL_PORT: 1
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+      BACKUP_DIR: /var/lib/sigaa/backups
+      BACKUP_EXTERNAL_DIR: /var/lib/sigaa/backups-external
+      BACKUP_ENCRYPTION_KEY_BASE64: ${BACKUP_ENCRYPTION_KEY_BASE64:?La clave de la copia es necesaria}
+      BACKUP_AUTOMATIC_ENABLED: "false"
+      BACKUP_RESTORE_TEST_ENABLED: "false"
+      BACKUP_PG_DUMP: /usr/local/bin/pg_dump
+      BACKUP_PG_RESTORE: /usr/local/bin/pg_restore
+      MANAGEMENT_BIND_ADDRESS: 0.0.0.0
+      LIBREOFFICE_COMMAND: /usr/bin/soffice
+    volumes:
+      - uploads_recovery:/app/uploads
+      - work_recovery:/var/lib/sigaa/backups
+      - ${BACKUP_EXTERNAL_DIR_HOST:?Monte una copia del respaldo}:/var/lib/sigaa/backups-external:ro
+      - ${SIGAA_FONTS_DIR_HOST:?Configure fuentes autorizadas}:/usr/local/share/fonts/sigaa:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m,uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/actuator/health/readiness"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [isolated]
+  web:
+    build: ../frontend
+    environment:
+      SIGAA_TRUSTED_PROXIES: 127.0.0.1/32
+    ports: ["127.0.0.1:8089:8080"]
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /data:rw,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0750
+      - /config:rw,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0750
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [isolated]
+networks:
+  isolated:
+    internal: true
+volumes:
+  postgres_recovery:
+  uploads_recovery:
+  work_recovery:

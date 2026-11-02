@@ -1,0 +1,958 @@
+<app-dashboard-sidebar [items]="menuItems()" [collapsed]="authService.sidebarCollapsed()" (logout)="onLogout()" />
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar [notifications]="notifications()" [userName]="authService.currentUser()?.nombre || 'Usuario'"
+    [userRole]="authService.currentUser()?.roles || ''" [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()" (logout)="onLogout()" />
+
+  <main class="dashboard-main">
+    <div class="documentos-content">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="header-row">
+          <div>
+            <h1 class="page-title">Documentos</h1>
+            <p class="page-desc">Administra, consulta y comparte documentos institucionales.</p>
+          </div>
+          <div class="header-actions">
+            @if (can('Crear')) { <button class="btn-primary" (click)="openNuevoDocModal()">
+              <ion-icon name="add-outline" />
+              Nuevo Documento
+            </button> }
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid kpi-5">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:var(--brand-soft);color:var(--institutional-blue);">
+            <ion-icon name="document-text-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ kpiTotal() }}</span>
+            <span class="kpi-label">Total Documentos</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#f0fdf4;color:#22c55e;">
+            <ion-icon name="share-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ kpiCompartidos() }}</span>
+            <span class="kpi-label">Documentos Compartidos</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#fef3c7;color:#f59e0b;">
+            <ion-icon name="time-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ kpiPendientes() }}</span>
+            <span class="kpi-label">Pendientes de Aprobación</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#f3e8ff;color:#a855f7;">
+            <ion-icon name="folder-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ kpiCarpetasActivas() }}</span>
+            <span class="kpi-label">Carpetas Activas</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#f1f5f9;color:#0a2342;">
+            <ion-icon name="cloud-outline" />
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ kpiEspacioUtilizado() }}</span>
+            <span class="kpi-label">Espacio Utilizado</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCIONES RAPIDAS -->
+      <div class="actions-bar">
+        @if (can('Crear carpeta')) { <button class="action-btn" (click)="openNuevaCarpetaModal()"><ion-icon
+            name="folder-outline" /> Nueva Carpeta</button> }
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filtros-row">
+        <div class="filtro-search-wrapper">
+          <ion-icon name="search-outline" class="search-icon" />
+          <input type="text" class="filtro-input" placeholder="Buscar documento..." [value]="filtros().search"
+            (input)="updateFilter('search', $any($event.target).value)" />
+        </div>
+        <select class="filtro-select" [value]="filtros().tipo"
+          (change)="updateFilter('tipo', $any($event).target.value)">
+          <option value="Todos">Tipo</option>
+          @for (categoria of categoriasDisponibles(); track categoria) { <option [value]="categoria">{{ categoria }}
+          </option> }
+        </select>
+        <select class="filtro-select" [value]="filtros().area"
+          (change)="updateFilter('area', $any($event).target.value)">
+          <option value="Todos">Unidad</option>
+          <option>Personal</option>
+          @for (unidad of unidades(); track unidad.id) {<option [value]="unidad.nombre">{{ unidad.nombre }}</option>}
+        </select>
+        <select class="filtro-select" [value]="filtros().fecha"
+          (change)="updateFilter('fecha', $any($event).target.value)">
+          <option value="Todos">Fecha</option>
+          <option>Hoy</option>
+          <option>Esta semana</option>
+          <option>Este mes</option>
+          <option>Este trimestre</option>
+        </select>
+        <select class="filtro-select" [value]="filtros().estado"
+          (change)="updateFilter('estado', $any($event).target.value)">
+          <option value="Todos">Estado</option>
+          <option>Aprobado</option>
+          <option>En revisión</option>
+          <option>Borrador</option>
+          <option>Rechazado</option>
+        </select>
+        <button class="btn-filtros" (click)="limpiarFiltros()">
+          <ion-icon name="filter-outline" />
+          Limpiar
+        </button>
+      </div>
+
+      <!-- TABS -->
+      <div
+        #categoryScroller
+        class="tab-bar document-category-tabs"
+        (pointerdown)="beginHorizontalDrag($event, categoryScroller)"
+        (pointermove)="moveHorizontalDrag($event)"
+        (pointerup)="endHorizontalDrag($event)"
+        (pointercancel)="endHorizontalDrag($event)"
+      >
+        <button class="tab-item" [class.active]="tabActivo() === 'todas'" (click)="setTab('todas')">Todos</button>
+        <button class="tab-item" [class.active]="tabActivo() === 'mis_documentos'"
+          (click)="setTab('mis_documentos')">Mis documentos
+          @if (cantidadPestana('mis_documentos') > 0) { <span class="tab-badge blue">{{ cantidadPestana('mis_documentos') }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'compartidos'"
+          (click)="setTab('compartidos')">Compartidos conmigo
+          @if (cantidadPestana('compartidos') > 0) { <span class="tab-badge blue">{{ cantidadPestana('compartidos') }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'tareas'" (click)="setTab('tareas')">Tareas
+          @if (cantidadPestana('tareas') > 0) { <span class="tab-badge blue">{{ cantidadPestana('tareas') }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'unidades'" (click)="setTab('unidades')">Unidades
+          @if (cantidadPestana('unidades') > 0) { <span class="tab-badge blue">{{ cantidadPestana('unidades') }}</span> }
+        </button>
+        <button class="tab-item" [class.active]="tabActivo() === 'mis_carpetas'" (click)="setTab('mis_carpetas')">
+          <ion-icon name="folder-outline" /> Mis carpetas
+          @if (carpetas().length > 0) { <span class="tab-badge blue">{{carpetas().length}}</span> }
+        </button>
+      </div>
+
+      @if (tabActivo() === 'mis_carpetas') {
+      <div class="content-grid folder-content-grid" [class.folder-detail-open]="!!selectedDoc()">
+        <div class="table-section">
+          <div class="carpetas-view">
+            <div class="table-header">
+              <h3>Mis Carpetas <span class="count-badge">({{ carpetas().length }})</span></h3>
+            </div>
+            <div class="carpetas-grid">
+              @for (carpeta of carpetas(); track carpeta.nombre) {
+              <div class="carpeta-card" [class.active]="carpetaActiva() === carpeta.nombre"
+                (click)="selectCarpeta(carpeta.nombre)">
+                <div class="carpeta-icon-wrapper">
+                  <ion-icon name="folder-open-outline" class="carpeta-icon" />
+                </div>
+                <span class="carpeta-nombre">{{ carpeta.nombre }}</span>
+                <span class="folder-type" [class.shared]="carpeta.tipo === 'COMPARTIDA'">{{ carpeta.tipo ===
+                  'COMPARTIDA' ? 'Compartida' : 'Personal' }}</span>
+                <span class="carpeta-count">{{ carpeta.count }} documentos</span>
+                @if (carpeta.puedeEliminar) {
+                <button class="folder-delete-btn" type="button" title="Eliminar carpeta"
+                  aria-label="Eliminar carpeta {{ carpeta.nombre }}" (click)="eliminarCarpeta(carpeta, $event)">
+                  <ion-icon name="trash-outline" /> Eliminar
+                </button>
+                }
+              </div>
+              }
+            </div>
+
+            @if (carpetaActiva(); as activa) {
+            <div class="carpeta-docs-section">
+              <div class="table-header">
+                <h3>
+                  <ion-icon name="folder-open-outline" />
+                  {{ activa }}
+                  <span class="count-badge">({{ documentosEnCarpetaActiva().length }})</span>
+                </h3>
+              </div>
+              <div
+                #folderTableScroller
+                class="table-container"
+                (pointerdown)="beginHorizontalDrag($event, folderTableScroller)"
+                (pointermove)="moveHorizontalDrag($event)"
+                (pointerup)="endHorizontalDrag($event)"
+                (pointercancel)="endHorizontalDrag($event)"
+              >
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Tipo</th>
+                      <th>Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (doc of documentosEnCarpetaActiva(); track doc.nombre) {
+                    <tr class="clickable-row" (click)="selectDocFromCarpeta(doc)"
+                      [class.selected]="selectedDoc()?.id === doc.id">
+                      <td class="cell-name">
+                        <div class="doc-name-block">
+                          <ion-icon name="document-outline" class="doc-icon" />
+                          <span class="doc-titulo">{{ doc.nombre }}</span>
+                        </div>
+                      </td>
+                      <td><span class="categoria-badge">{{ doc.categoria }}</span></td>
+                      <td class="cell-date">{{ doc.fecha }}</td>
+                    </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- RIGHT: DETAIL -->
+        @if (selectedDoc(); as doc) {
+        <div class="detail-section folder-document-detail">
+          <div class="detail-card">
+            <div class="detail-header">
+              <div class="detail-title-group">
+                <h3 class="detail-title">{{ doc.nombre }}</h3>
+                <span class="estado-badge" [class.aprobado]="doc.estado==='aprobado'"
+                  [class.en-revision]="doc.estado==='en_revision'" [class.borrador]="doc.estado==='borrador'"
+                  [class.rechazado]="doc.estado==='rechazado'">
+                  {{ estadoLabel(doc.estado) }}
+                </span>
+              </div>
+              <button class="btn-close-detail" type="button" aria-label="Cerrar detalle del documento"
+                (click)="closeDetail()" title="Cerrar detalle del documento">
+                <ion-icon name="close-outline" />
+              </button>
+            </div>
+
+            <div class="detail-body folder-detail-body">
+              <div class="folder-detail-primary">
+                <div class="folder-metadata-grid">
+                  <div class="detail-row"><span class="detail-label">Categoría</span><span class="detail-value">{{
+                      doc.categoria }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Área</span><span class="detail-value">{{ doc.area
+                      }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Versión</span><span class="detail-value">{{
+                      doc.version }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Fecha</span><span class="detail-value">{{ doc.fecha
+                      }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Propietario</span><span class="detail-value">{{
+                      doc.propietario }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Clasificación</span><span
+                      class="clasificacion-badge" [attr.data-level]="doc.clasificacion">{{
+                      clasificacionLabel(doc.clasificacion) }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Páginas</span><span class="detail-value">{{
+                      doc.paginas }}</span></div>
+                  <div class="detail-row"><span class="detail-label">Tamaño</span><span class="detail-value">{{
+                      doc.tamano }}</span></div>
+                  <div class="detail-row description-row"><span class="detail-label">Descripción</span><span
+                      class="detail-value">{{ doc.descripcion }}</span></div>
+                </div>
+
+                <div class="detail-section-group folder-preview-group">
+                  <span class="detail-section-title"><ion-icon name="document-text-outline" /> Vista Previa del
+                    Documento</span>
+                  <div class="detail-preview-card">
+                    <div class="preview-body">
+                      @if (previewVisible() && previewUrl()) {
+                      <iframe [src]="previewUrl()" class="pdf-iframe" title="Vista previa del documento"></iframe>
+                      } @else if (previewVisible() && !previewUrl()) {
+                      <div class="no-preview"><ion-icon name="document-outline" class="no-preview-icon" />
+                        <p>Cargando vista previa...</p>
+                      </div>
+                      } @else {
+                      <div class="no-preview">
+                        <ion-icon name="document-outline" class="no-preview-icon" />
+                        @if (canPreview(doc)) {
+                        <p>Haz clic en el botón para ver la vista previa</p>
+                        <button class="btn-preview-toggle" (click)="togglePreview()"><ion-icon name="eye-outline" />
+                          Mostrar Vista Previa</button>
+                        } @else if (tieneArchivo(doc)) {
+                        <p>Este formato no admite vista previa en el navegador.</p>
+                        <span class="no-preview-sub">Descarga el archivo para abrirlo con la aplicación
+                          correspondiente.</span>
+                        @if (puedeDescargarDocumento(doc)) { <button class="btn-preview-toggle" (click)="descargarDocumento(doc)"><ion-icon
+                            name="download-outline" /> Descargar archivo</button> }
+                        } @else {
+                        <p>No hay archivo adjunto para vista previa</p>
+                        <span class="no-preview-sub">Sube un archivo al editar este documento</span>
+                        }
+                      </div>
+                      }
+                    </div>
+                    @if (previewVisible()) {
+                    <div class="preview-toolbar"><button class="toolbar-btn" (click)="togglePreview()"><ion-icon
+                          name="close-outline" /> Ocultar</button></div>
+                    }
+                    <div class="pdf-info-bar">
+                      <span><ion-icon name="document-outline" /> {{ doc.nombre }}</span>
+                      <span><ion-icon name="documents-outline" /> {{ doc.paginas }} páginas</span>
+                      <span><ion-icon name="server-outline" /> {{ doc.tamano }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-detail-secondary">
+                <div class="detail-section-group">
+                  <span class="detail-section-title"><ion-icon name="shield-checkmark-outline" /> Permisos de
+                    Acceso</span>
+                  @if (esDocumentoGestionable(doc) && authService.isInstitutionalManager() && doc.puedeAdministrarAcceso && can('Editar')) {
+                  <div class="permisos-grid">
+                    @for (p of [
+                    { nivel: 'solo_lectura', label: 'Solo Lectura', icon: 'eye-outline' },
+                    { nivel: 'editar', label: 'Editar', icon: 'pencil-outline' },
+                    { nivel: 'aprobar', label: 'Aprobar', icon: 'checkmark-circle-outline' },
+                    { nivel: 'administrar', label: 'Administrar', icon: 'shield-checkmark-outline' }
+                    ]; track p.nivel) {
+                    <button class="permiso-card" [class.active]="permisoActual() === p.nivel"
+                      (click)="selectPermiso(p.nivel)">
+                      <ion-icon [name]="p.icon" class="permiso-icon" /><span class="permiso-label">{{ p.label
+                        }}</span><ion-icon name="lock-open-outline" class="permiso-check" />
+                    </button>
+                    }
+                  </div>
+                  } @else {
+                  <p class="folder-access-note">Los permisos son administrados por el propietario del documento.</p>
+                  }
+                <div class="folder-detail-actions">
+                  @if (showSolicitarAprobacion()) {
+                    <button type="button" class="btn-secondary" [disabled]="preparandoSolicitud() || guardandoSolicitud()" (click)="abrirSolicitudAprobacion()">
+                      <ion-icon name="checkmark-circle-outline" />{{ preparandoSolicitud() ? 'Preparando…' : 'Solicitar aprobación' }}
+                    </button>
+                  }
+                  @if (puedeDescargarDocumento(doc)) { <button class="btn-primary" [disabled]="!tieneArchivo(doc)" (click)="abrirDocumentoCompleto()"><ion-icon name="eye-outline" /> Ver Completo</button> }
+                  @if (puedeDescargarDocumento(doc) && tieneArchivo(doc)) { <button class="btn-secondary" (click)="descargarDocumento(doc)"><ion-icon
+                      name="download-outline" /> Descargar</button> }
+                  @if (puedeCompartirDocumento(doc)) { <button class="btn-secondary"
+                    (click)="openShareModal(doc)"><ion-icon name="share-outline" /> Compartir</button> }
+                </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+      } @else {
+      <!-- CONTENT GRID: 70/30 -->
+      <div class="content-grid" [class.detail-open]="!!selectedDoc()">
+        <!-- LEFT: TABLE -->
+        <div class="table-section">
+          <div class="table-header">
+            <div class="documents-table-heading">
+              <h3><ion-icon name="document-text-outline" aria-hidden="true" /> Documentos <span class="count-badge">{{
+                  totalCount() }}</span></h3>
+            </div>
+          </div>
+          <div
+            #documentTableScroller
+            class="table-container"
+            (click)="closeMenu()"
+            (pointerdown)="beginHorizontalDrag($event, documentTableScroller)"
+            (pointermove)="moveHorizontalDrag($event)"
+            (pointerup)="endHorizontalDrag($event)"
+            (pointercancel)="endHorizontalDrag($event)"
+          >
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Fecha</th>
+                  <th>Propietario</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of paginatedDocumentos(); track doc.id) {
+                <tr (click)="selectDocumento(doc)" [class.selected]="selectedDoc()?.id === doc.id"
+                  class="clickable-row">
+                  <td class="cell-name">
+                    <div class="doc-name-block">
+                      <ion-icon name="document-outline" class="doc-icon" />
+                      <span class="doc-titulo">{{ doc.nombre }}</span>
+                    </div>
+                  </td>
+                  <td><span class="categoria-badge">{{ doc.categoria }}</span></td>
+                  <td class="cell-date">{{ doc.fecha }}</td>
+                  <td>{{ doc.propietario }}</td>
+                  <td>
+                    <span class="estado-badge" [class.aprobado]="doc.estado==='aprobado'"
+                      [class.en-revision]="doc.estado==='en_revision'" [class.borrador]="doc.estado==='borrador'"
+                      [class.rechazado]="doc.estado==='rechazado'">
+                      {{ estadoLabel(doc.estado) }}
+                    </span>
+                  </td>
+                  <td class="actions-cell" (click)="$event.stopPropagation()">
+                    <div class="menu-wrapper">
+                      <button class="btn-icon" type="button" title="Ver" aria-label="Ver documento"
+                        (click)="selectDocumento(doc)">
+                        <ion-icon name="eye-outline" />
+                      </button>
+                      @if (puedeDescargarDocumento(doc) && tieneArchivo(doc)) { <button class="btn-icon" type="button" title="Descargar"
+                        aria-label="Descargar documento" (click)="descargarDocumento(doc)">
+                        <ion-icon name="download-outline" />
+                      </button> }
+                      @if (puedeCompartirDocumento(doc)) { <button class="btn-icon" type="button" title="Compartir"
+                        aria-label="Compartir documento" (click)="openShareModal(doc)">
+                        <ion-icon name="share-outline" />
+                      </button> }
+                      @if (puedeEditarDocumento(doc) && can('Editar')) { <button class="btn-icon" type="button" title="Editar"
+                        aria-label="Editar documento" (click)="editarDocumento(doc)">
+                        <ion-icon name="pencil-outline" />
+                      </button> }
+                      <button class="btn-icon" type="button" title="Más acciones"
+                        aria-label="Más acciones del documento" (click)="abrirAcciones(doc, $event)">
+                        <ion-icon name="ellipsis-vertical-outline" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                } @empty {
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="empty-content documents-empty-content">
+                      <span class="empty-document-icon" aria-hidden="true"><ion-icon name="document-outline" /></span>
+                      <div>
+                        <strong>No hay documentos todavía</strong>
+                        <p>Cuando cargues o compartan un documento contigo, aparecerá en esta lista.</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalPages().length > 1) {
+          <div class="pagination">
+            <button class="page-btn" type="button" aria-label="Página anterior" (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1" title="Página anterior">
+              <ion-icon name="chevron-back-outline" />
+            </button>
+            @for (p of totalPages(); track p) {
+            <button class="page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">{{ p }}</button>
+            }
+            <button class="page-btn" type="button" aria-label="Página siguiente" (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() === totalPages().length" title="Página siguiente">
+              <ion-icon name="chevron-forward-outline" />
+            </button>
+          </div>
+          }
+
+        </div>
+
+        <!-- RIGHT: DETAIL -->
+        @if (selectedDoc(); as doc) {
+        <div class="detail-section">
+          <div class="detail-card">
+            <div class="detail-header">
+              <div class="detail-title-group">
+                <h3 class="detail-title">{{ doc.nombre }}</h3>
+                <span class="estado-badge" [class.aprobado]="doc.estado==='aprobado'"
+                  [class.en-revision]="doc.estado==='en_revision'" [class.borrador]="doc.estado==='borrador'"
+                  [class.rechazado]="doc.estado==='rechazado'">
+                  {{ estadoLabel(doc.estado) }}
+                </span>
+              </div>
+              <button class="btn-close-detail" type="button" aria-label="Cerrar detalle del documento"
+                (click)="closeDetail()" title="Cerrar detalle del documento">
+                <ion-icon name="close-outline" />
+              </button>
+            </div>
+
+            <div class="detail-body">
+              <div class="detail-row">
+                <span class="detail-label">Categoría</span>
+                <span class="detail-value">{{ doc.categoria }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Unidad responsable</span>
+                <span class="detail-value">{{ doc.area }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Versión actual</span>
+                <span class="detail-value">{{ doc.version }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Fecha</span>
+                <span class="detail-value">{{ doc.fecha }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Propietario</span>
+                <span class="detail-value">{{ doc.propietario }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Clasificación</span>
+                <span class="clasificacion-badge" [attr.data-level]="doc.clasificacion">{{
+                  clasificacionLabel(doc.clasificacion) }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Páginas</span>
+                <span class="detail-value">{{ doc.paginas }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Tamaño</span>
+                <span class="detail-value">{{ doc.tamano }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Descripción</span>
+                <span class="detail-value">{{ doc.descripcion }}</span>
+              </div>
+
+              @if (esDocumentoGestionable(doc)) {
+              <div class="detail-section-group">
+                <div class="document-version-head">
+                  <span class="detail-section-title"><ion-icon name="layers-outline" /> Historial de versiones</span>
+                  <button type="button" class="btn-secondary btn-sm" [attr.aria-expanded]="historialOpen()"
+                    (click)="historialOpen() ? historialOpen.set(false) : abrirHistorial()">
+                    {{ historialOpen() ? 'Ocultar' : 'Consultar' }}
+                  </button>
+                </div>
+                @if (doc.solicitudAprobacion; as solicitud) {
+                <p class="document-version-note">Solicitud de {{ solicitud.aprobador }}:
+                  {{ solicitud.version ? 'versión ' + solicitud.version + ' en revisión' : 'registro anterior sin versión verificable' }}.
+                </p>
+                }
+                @if (historialOpen()) {
+                  @if (cargandoHistorial()) { <p class="document-version-note" role="status">Consultando historial…</p> }
+                  @else if (errorHistorial()) {
+                    <p class="document-version-note" role="alert">No se pudo cargar el historial.</p>
+                    <button type="button" class="btn-secondary btn-sm" (click)="recargarHistorial()">Reintentar</button>
+                  }
+                  @else if (historial(); as datos) {
+                    <ol class="document-version-list">
+                      @for (version of datos.versiones; track version.id) {
+                        <li class="document-version-item">
+                          <div class="document-version-head">
+                            <strong>Versión {{ version.version }} @if (version.actual) { <span class="document-version-current">Actual</span> }</strong>
+                            @if (version.disponible && can('Descargar')) {
+                              <button type="button" class="btn-secondary btn-sm" [disabled]="descargandoVersion().has(version.id)"
+                                [attr.aria-label]="'Descargar versión ' + version.version" (click)="descargarVersion(version)">
+                                <ion-icon name="download-outline" /> Descargar
+                              </button>
+                            }
+                          </div>
+                          <span class="document-version-meta">{{ version.archivoNombre }}</span>
+                          <span class="document-version-meta">Registrada por {{ version.autor }} · {{ version.fecha | date:'dd/MM/yyyy HH:mm' }}</span>
+                          @if (version.lineaBase) { <p class="document-version-note">Archivo existente verificado al registrar esta base. Su autor y fecha originales no están comprobados.</p> }
+                          @if (!version.disponible) { <p class="document-version-note">El archivo de esta versión no está disponible.</p> }
+                          @for (solicitud of version.aprobaciones; track solicitud.id) {
+                            <div class="document-version-approval">
+                              <strong>{{ aprobacionLabel(solicitud.estado) }}</strong>
+                              <span>{{ solicitud.respondidoPor || solicitud.aprobador }} · {{ (solicitud.fechaRespuesta || solicitud.fecha) | date:'dd/MM/yyyy HH:mm' }}</span>
+                              @if (solicitud.comentarioRespuesta) { <span>{{ solicitud.comentarioRespuesta }}</span> }
+                            </div>
+                          }
+                          @if (!version.aprobaciones.length) { <span class="document-version-note">Sin aprobación vinculada a esta versión.</span> }
+                        </li>
+                      } @empty { <li class="document-version-note">Sin archivo. Adjunta contenido para registrar la primera versión.</li> }
+                    </ol>
+                    @if (datos.registrosAnteriores.length || datos.aprobacionesSinVersion.length) {
+                      <details class="document-version-legacy">
+                        <summary>Registros anteriores sin versión de archivo verificable</summary>
+                        @for (registro of datos.registrosAnteriores; track registro.id) {
+                          <p class="document-version-note">Versión declarada {{ registro.version }} · {{ registro.autor }} · {{ registro.fecha | date:'dd/MM/yyyy' }}. {{ registro.cambios }}</p>
+                        }
+                        @for (solicitud of datos.aprobacionesSinVersion; track solicitud.id) {
+                          <p class="document-version-note">{{ aprobacionLabel(solicitud.estado) }} · {{ solicitud.respondidoPor || solicitud.aprobador }} · {{ (solicitud.fechaRespuesta || solicitud.fecha) | date:'dd/MM/yyyy HH:mm' }}. No se atribuye esta revisión al archivo actual.</p>
+                        }
+                      </details>
+                    }
+                  }
+                }
+              </div>
+              }
+
+              <div class="detail-section-group">
+                <span class="detail-section-title">
+                  <ion-icon name="document-text-outline" /> Vista Previa del Documento
+                </span>
+                <div class="detail-preview-card">
+                  <div class="preview-body">
+                    @if (previewVisible() && previewUrl()) {
+                    <iframe [src]="previewUrl()" class="pdf-iframe" title="Vista previa del documento">
+                    </iframe>
+                    } @else if (previewVisible() && !previewUrl()) {
+                    <div class="no-preview">
+                      <ion-icon name="document-outline" class="no-preview-icon" />
+                      <p>Cargando vista previa...</p>
+                    </div>
+                    } @else {
+                    <div class="no-preview">
+                      <ion-icon name="document-outline" class="no-preview-icon" />
+                      @if (canPreview(doc)) {
+                      <p>Haz clic en el botón para ver la vista previa</p>
+                      <button class="btn-preview-toggle" (click)="togglePreview()">
+                        <ion-icon name="eye-outline" /> Mostrar Vista Previa
+                      </button>
+                      } @else if (tieneArchivo(doc)) {
+                      <p>Este formato no admite vista previa en el navegador.</p>
+                      <span class="no-preview-sub">Descarga el archivo para abrirlo con la aplicación
+                        correspondiente.</span>
+                      @if (puedeDescargarDocumento(doc)) { <button class="btn-preview-toggle" (click)="descargarDocumento(doc)">
+                        <ion-icon name="download-outline" /> Descargar archivo
+                      </button> }
+                      } @else {
+                      <p>No hay archivo adjunto para vista previa</p>
+                      <span class="no-preview-sub">Sube un archivo al editar este documento</span>
+                      }
+                    </div>
+                    }
+                  </div>
+                  @if (previewVisible()) {
+                  <div class="preview-toolbar">
+                    <button class="toolbar-btn" (click)="togglePreview()">
+                      <ion-icon name="close-outline" /> Ocultar
+                    </button>
+                  </div>
+                  }
+                  <div class="pdf-info-bar">
+                    <span><ion-icon name="document-outline" /> {{ doc.nombre }}</span>
+                    <span><ion-icon name="documents-outline" /> {{ doc.paginas }} páginas</span>
+                    <span><ion-icon name="server-outline" /> {{ doc.tamano }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-section-group">
+                <span class="detail-section-title">
+                  <ion-icon name="shield-checkmark-outline" /> Permisos de Acceso
+                </span>
+                @if (esDocumentoGestionable(doc) && authService.isInstitutionalManager() && doc.puedeAdministrarAcceso && can('Editar')) { <div class="permisos-grid">
+                  @for (p of [
+                  { nivel: 'solo_lectura', label: 'Solo Lectura', icon: 'eye-outline' },
+                  { nivel: 'editar', label: 'Editar', icon: 'pencil-outline' },
+                  { nivel: 'aprobar', label: 'Aprobar', icon: 'checkmark-circle-outline' },
+                  { nivel: 'administrar', label: 'Administrar', icon: 'shield-checkmark-outline' },
+                  ]; track p.nivel) {
+                  <button class="permiso-card" [class.active]="permisoActual() === p.nivel"
+                    (click)="selectPermiso(p.nivel)">
+                    <ion-icon [name]="p.icon" class="permiso-icon" />
+                    <span class="permiso-label">{{ p.label }}</span>
+                    <ion-icon name="lock-open-outline" class="permiso-check" />
+                  </button>
+                  }
+                </div>
+                }
+            <div class="detail-actions">
+                  @if (showSolicitarAprobacion()) {
+                    <button type="button" class="btn-secondary" [disabled]="preparandoSolicitud() || guardandoSolicitud()" (click)="abrirSolicitudAprobacion()">
+                      <ion-icon name="checkmark-circle-outline" />{{ preparandoSolicitud() ? 'Preparando…' : 'Solicitar aprobación' }}
+                    </button>
+                  }
+              @if (puedeDescargarDocumento(doc)) { <button class="btn-primary" [disabled]="!tieneArchivo(doc)" (click)="abrirDocumentoCompleto()"><ion-icon name="eye-outline" /> Ver Completo</button> }
+              @if (puedeDescargarDocumento(doc) && tieneArchivo(doc)) { <button class="btn-secondary" (click)="descargarDocumento(doc)"><ion-icon
+                  name="download-outline" /> Descargar</button> }
+              @if (puedeCompartirDocumento(doc)) { <button class="btn-secondary" (click)="openShareModal(doc)"><ion-icon
+                  name="share-outline" /> Compartir</button> }
+            </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+      }
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Compartir Documento -->
+<ion-modal [isOpen]="compartirOpen()" (didDismiss)="closeShareModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Compartir Documento</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar opciones para compartir" (click)="closeShareModal()"
+            title="Cerrar opciones para compartir">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Usuario registrado</label>
+          <select class="modal-select" [value]="compartirUsuarioId() ?? ''"
+            (change)="seleccionarUsuarioCompartir($any($event.target).value)">
+            <option value="">Seleccionar usuario...</option>
+            @for (usuario of usuariosCompartir(); track usuario.id) {
+            <option [value]="usuario.id">{{ usuario.nombre }} — {{ usuario.cargo || usuario.correo }}</option>
+            }
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Nivel de acceso</label>
+          <select class="modal-select" [value]="compartirPermiso()"
+            (change)="compartirPermiso.set($any($event.target).value)">
+            <option value="LECTURA">Lectura y descarga</option>
+            <option value="EDICION">Lectura y edición</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Fecha de Expiración</label>
+          <input type="date" class="modal-input" [value]="compartirExpira()"
+            (input)="compartirExpira.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Accesos vigentes</label>
+          <div class="share-access-list">
+            @for (acceso of compartidosActuales(); track acceso.usuarioId) {
+            <div class="share-access-item">
+              <div><strong>{{ acceso.nombre }}</strong><span>{{ acceso.correo }} · {{ acceso.permiso === 'EDICION' ?
+                  'Edición' : 'Lectura' }}</span></div>
+              <button class="btn-icon" type="button" [attr.aria-label]="'Retirar acceso de ' + acceso.nombre"
+                (click)="retirarComparticion(acceso)" [title]="'Retirar acceso de ' + acceso.nombre"><ion-icon
+                  name="trash-outline" /></button>
+            </div>
+            } @empty {
+            <span class="share-access-empty">Este documento no tiene accesos individuales.</span>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeShareModal()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" [disabled]="!compartirUsuarioId()" (click)="guardarComparticion()">
+          <ion-icon name="share-outline" />
+          Conceder acceso
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Solicitar aprobación -->
+<ion-modal class="documento-approval-modal" [isOpen]="solicitudAprobacionOpen()" [canDismiss]="!guardandoSolicitud()" (didDismiss)="cerrarSolicitudAprobacion()">
+  <ng-template>
+    <ion-header><ion-toolbar color="primary"><ion-title>Solicitar aprobación</ion-title><ion-buttons
+          slot="end"><ion-button aria-label="Cerrar solicitud de aprobación" (click)="cerrarSolicitudAprobacion()"
+            [disabled]="guardandoSolicitud()" title="Cerrar solicitud de aprobación"><ion-icon name="close-outline" slot="icon-only"
+              aria-hidden="true" /></ion-button></ion-buttons></ion-toolbar></ion-header>
+    <div class="modal-body">
+      <p class="approval-context">Selecciona quién revisará <strong>{{ selectedDoc()?.nombre }}</strong>, versión <strong>{{ versionSolicitudLabel() }}</strong>.</p>
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label" for="documento-aprobador">Aprobador <span class="required">*</span></label>
+          <select id="documento-aprobador" class="modal-select" [disabled]="guardandoSolicitud()" [value]="aprobadorSeleccionadoId() ?? ''"
+            (change)="seleccionarAprobador($any($event.target).value)">
+            <option value="">Seleccione una persona</option>@for (usuario of aprobadoresDisponibles(); track usuario.id) {
+            <option [value]="usuario.id">{{ usuario.nombre }} — {{ usuario.cargo || usuario.correo }}</option> }
+          </select>
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label" for="documento-aprobacion-comentario">Comentario <span class="field-optional">(opcional)</span></label>
+          <textarea id="documento-aprobacion-comentario" class="modal-textarea" rows="3" [disabled]="guardandoSolicitud()"
+            placeholder="Indique qué debe revisarse" [value]="comentarioSolicitud()"
+            (input)="comentarioSolicitud.set($any($event.target).value)"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn-cancel"
+          [disabled]="guardandoSolicitud()" (click)="cerrarSolicitudAprobacion()">Cancelar</button><button type="button" class="btn-primary"
+          [disabled]="!aprobadorSeleccionadoId() || !versionSolicitudId() || guardandoSolicitud()" (click)="solicitarAprobacion()"><ion-icon
+            name="checkmark-circle-outline" /> {{ guardandoSolicitud() ? 'Enviando…' : 'Enviar solicitud' }}</button></div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Nuevo Documento -->
+<ion-modal class="form-modal" [isOpen]="nuevoDocOpen()" [canDismiss]="!guardandoDocumento()" (didDismiss)="closeNuevoDocModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>{{ modalTitle() }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar formulario de documento" (click)="closeNuevoDocModal()"
+            [disabled]="guardandoDocumento()"
+            title="Cerrar formulario de documento">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid" [attr.inert]="guardandoDocumento() ? '' : null">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Título del Documento</label>
+          <input type="text" class="modal-input" placeholder="Ej: Informe de Gestión Mensual" [value]="formNombre()"
+            (input)="formNombre.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Descripción</label>
+          <textarea class="modal-textarea" rows="3" placeholder="Breve descripción del documento"
+            [value]="formDescripcion()" (input)="formDescripcion.set($any($event.target).value)"></textarea>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Categoría</label>
+          <select class="modal-select" [value]="formCategoria()"
+            (change)="formCategoria.set($any($event.target).value)">
+            @for (categoria of categoriasDisponibles(); track categoria) { <option [value]="categoria">{{ categoria }}
+            </option> }
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Unidad</label>
+          <select class="modal-select" [disabled]="!puedeCambiarAccesoFormulario()" [value]="formArea()" (change)="formArea.set($any($event.target).value)">
+            <option value="Personal">Personal</option>
+            @for (unidad of unidades(); track unidad.id) {<option [value]="unidad.nombre">{{ unidad.nombre }}</option>}
+          </select>
+          <small class="field-helper">Personal indica que el documento no pertenece a una unidad institucional.</small>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Clasificación</label>
+          <select class="modal-select" [disabled]="!puedeCambiarAccesoFormulario() || (!!editandoId() && !authService.isAdmin())" [value]="formClasificacion()"
+            (change)="formClasificacion.set($any($event.target).value)">
+            <option value="PUBLICO">Institucional</option>
+            <option value="RESTRINGIDO">Por unidad</option>
+            <option value="CONFIDENCIAL">Confidencial</option>
+          </select>
+          @if (editandoId() && !authService.isAdmin()) { <small class="field-helper">La reclasificación de documentos existentes requiere privilegios administrativos.</small> }
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Versión actual</label>
+          <input type="text" class="modal-input" [value]="versionFormulario()" readonly />
+          <small class="field-helper">Se actualiza al guardar un archivo con contenido diferente.</small>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Carpeta</label>
+          <select class="modal-select" [disabled]="!puedeCambiarAccesoFormulario()" [value]="formCarpetaId() ?? ''"
+            (change)="formCarpetaId.set($any($event.target).value || null)">
+            <option value="">Sin carpeta</option>
+            @for (c of carpetas(); track c.id) {
+            <option [value]="c.id">{{ c.nombre }}</option>
+            }
+          </select>
+          <small class="field-helper">La carpeta organiza el documento; su clasificación mantiene las restricciones de acceso.</small>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">{{ versionFormulario() === 'Sin archivo' ? 'Subir archivo' : 'Adjuntar o reemplazar archivo' }}</label>
+          <div class="file-upload-wrapper">
+            <label class="file-upload-btn">
+              <ion-icon name="cloud-upload-outline" />
+              Seleccionar archivo
+              <input type="file" class="file-input-hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv,.zip,.rar"
+                (change)="onFileSelected($event)" />
+            </label>
+          </div>
+        </div>
+        <div class="modal-field modal-field-full">
+          @if (archivosSubir().length > 0) {
+          <div class="file-list">
+            @for (file of archivosSubir(); track file.nombre) {
+            <div class="file-item">
+              <ion-icon name="document-outline" class="file-item-icon" />
+              <div class="file-item-info">
+                <span class="file-item-name">{{ file.nombre }}</span>
+                <span class="file-item-size">{{ file.tamano }}</span>
+              </div>
+              <button class="file-item-remove" type="button" [attr.aria-label]="'Quitar archivo ' + file.nombre"
+                (click)="eliminarArchivo(file.nombre)" [title]="'Quitar archivo ' + file.nombre">
+                <ion-icon name="close-outline" />
+              </button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" [disabled]="guardandoDocumento()" (click)="closeNuevoDocModal()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" [disabled]="guardandoDocumento() || !formNombre().trim()" [attr.aria-busy]="guardandoDocumento()" (click)="guardarDocumento()">
+          <ion-icon name="add-outline" />
+          {{ guardandoDocumento() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL: Nueva Carpeta -->
+<ion-modal [isOpen]="nuevaCarpetaOpen()" (didDismiss)="closeNuevaCarpetaModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="primary">
+        <ion-title>Nueva Carpeta</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar formulario de carpeta" (click)="closeNuevaCarpetaModal()"
+            title="Cerrar formulario de carpeta">
+            <ion-icon name="close-outline" slot="icon-only" />
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Nombre de la Carpeta</label>
+          <input type="text" class="modal-input" placeholder="Ej: Documentos RRHH" [value]="formCarpetaNombre()"
+            (input)="formCarpetaNombre.set($any($event.target).value)" />
+        </div>
+        <div class="modal-field modal-field-full">
+          <label class="modal-label">Tipo de carpeta</label>
+          <div class="folder-type-choice">
+            <label class="folder-choice personal" [class.selected]="formCarpetaTipo() === 'PERSONAL'"><input
+                type="radio" name="folder-type" [checked]="formCarpetaTipo() === 'PERSONAL'"
+                (change)="formCarpetaTipo.set('PERSONAL')" /><ion-icon name="lock-closed-outline" /><span><b>Carpeta
+                  personal</b><small>Organiza tus documentos; cada archivo conserva el acceso definido por su clasificación.</small></span><ion-icon
+                class="choice-check" name="checkmark-circle-outline" /></label>
+            <label class="folder-choice shared" [class.selected]="formCarpetaTipo() === 'COMPARTIDA'"><input
+                type="radio" name="folder-type" [checked]="formCarpetaTipo() === 'COMPARTIDA'"
+                (change)="formCarpetaTipo.set('COMPARTIDA')" /><ion-icon name="people-outline" /><span><b>Carpeta
+                  compartida</b><small>Elige quién verá la carpeta. Cada documento mantiene sus restricciones de acceso.</small></span><ion-icon class="choice-check" name="checkmark-circle-outline" /></label>
+          </div>
+        </div>
+        @if (formCarpetaTipo() === 'COMPARTIDA') {<div class="modal-field modal-field-full folder-members"><label
+            class="modal-label">Miembros con acceso</label>
+          <p>Los miembros ven esta carpeta. Consultar documentos o solicitar aprobación depende también de su clasificación y permisos.</p>
+          <div class="member-picker">@for (u of usuariosCarpeta(); track u.id) {<label><input type="checkbox"
+                [checked]="formCarpetaMiembroIds().includes(u.id)"
+                (change)="toggleMiembroCarpeta(u.id, $any($event.target).checked)" /><span>{{ u.nombre }}<small>{{
+                  u.correo }}</small></span></label>}</div>
+        </div>}
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeNuevaCarpetaModal()">
+          <ion-icon name="close-outline" />
+          Cancelar
+        </button>
+        <button class="btn-primary" (click)="crearCarpeta()">
+          <ion-icon name="folder-outline" />
+          Crear Carpeta
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</ion-modal>

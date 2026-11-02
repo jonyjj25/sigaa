@@ -1,0 +1,15 @@
+MODELO RELACIONAL SIGAA
+
+Fuente: esquema de las 116 migraciones del repositorio hasta V118.
+Contenido: 80 tablas, 830 columnas y 110 claves foráneas declaradas.
+Las tablas se agrupan visualmente por módulo; esa agrupación no altera el esquema.
+Las cajas REF. muestran claves primarias de tablas externas al módulo.
+PK: clave primaria. FK: clave foránea. UQ: restricción UNIQUE de una sola columna.
+Asterisco: columna NOT NULL. Flecha: columna FK hacia la clave referenciada.
+El diagrama muestra todos los campos y sus tipos, sin datos institucionales.
+No se representan índices, valores predeterminados ni restricciones CHECK; consulte el diccionario del manual técnico para esos detalles.
+Se excluyen la vista vw_usuario_roles y la tabla interna de Flyway.
+
+PNG: imagen completa para insertar en documentos.
+SVG: versión vectorial para ampliar o imprimir sin pérdida de calidad.
+modulo_01.svg a modulo_12.svg: módulos individuales.

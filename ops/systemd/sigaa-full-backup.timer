@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily SIGAA full backup
+
+[Timer]
+OnCalendar=*-*-* 02:10:00 America/Panama
+Persistent=true
+RandomizedDelaySec=0
+Unit=sigaa-full-backup.service
+
+[Install]
+WantedBy=timers.target

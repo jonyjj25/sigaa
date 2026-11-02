@@ -1,37 +1,2906 @@
-/*
- * App Global CSS
- * ----------------------------------------------------------------------------
- * Put style rules here that you want to apply globally. These styles are for
- * the entire app and not just one component. Additionally, this file can be
- * used as an entry point to import other CSS/Sass files to be included in the
- * output CSS.
- * For more information on global stylesheets, visit the documentation:
- * https://ionicframework.com/docs/layout/global-stylesheets
- */
+@use './app/shared/styles/dashboard-common';
 
-/* Core CSS required for Ionic components to work properly */
+/* Confirmaciones: los overlays Ionic se montan fuera de la página. */
+ion-toast.inventario-save-toast,
+ion-toast.reunion-state-toast,
+ion-toast.unidades-feedback-toast {
+  --background: var(--surface-overlay);
+  --color: var(--text-default);
+  --border-color: var(--state-success-border);
+  --border-style: solid;
+  --border-width: 1px;
+  --border-radius: 14px;
+  --box-shadow: var(--shadow-xl);
+  --width: min(440px, calc(100vw - 32px));
+  --start: 16px;
+  --end: 16px;
+  --button-color: var(--state-success-text);
+}
+
+ion-toast.inventario-save-toast::part(icon),
+ion-toast.reunion-state-toast::part(icon),
+ion-toast.unidades-feedback-toast::part(icon) {
+  color: var(--state-success-text);
+  font-size: 28px;
+}
+
+ion-toast.inventario-save-toast::part(header),
+ion-toast.reunion-state-toast::part(header),
+ion-toast.unidades-feedback-toast::part(header) {
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+ion-toast.inventario-save-toast::part(message),
+ion-toast.reunion-state-toast::part(message),
+ion-toast.unidades-feedback-toast::part(message) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+ion-toast.unidades-feedback-toast--warning {
+  --border-color: var(--state-warning-border);
+  --unidades-toast-accent: var(--state-warning-text);
+}
+
+ion-toast.unidades-feedback-toast--danger {
+  --border-color: var(--state-danger-border);
+  --unidades-toast-accent: var(--state-danger-text);
+}
+
+ion-toast.unidades-feedback-toast::part(icon) {
+  color: var(--unidades-toast-accent, var(--state-success-text));
+  font-size: 24px;
+}
+
+ion-toast.reunion-started-toast {
+  --border-color: var(--state-info-border);
+  --button-color: var(--state-info-text);
+}
+
+ion-toast.reunion-started-toast::part(icon) {
+  color: var(--state-info-text);
+}
+
 @import "@ionic/angular/css/core.css";
-
-/* Basic CSS for apps built with Ionic */
 @import "@ionic/angular/css/normalize.css";
 @import "@ionic/angular/css/structure.css";
 @import "@ionic/angular/css/typography.css";
 @import "@ionic/angular/css/display.css";
-
-/* Optional CSS utils that can be commented out */
 @import "@ionic/angular/css/padding.css";
 @import "@ionic/angular/css/float-elements.css";
 @import "@ionic/angular/css/text-alignment.css";
 @import "@ionic/angular/css/text-transformation.css";
 @import "@ionic/angular/css/flex-utils.css";
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
+/* Campos de los diálogos Ionic: presentación institucional y foco único. */
+ion-alert .alert-wrapper {
+  width: min(440px, calc(100vw - 28px));
+  max-width: 440px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-overlay);
+  box-shadow: 0 22px 60px var(--overlay-backdrop);
+}
 
-/* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+ion-alert .alert-head {
+  padding: 22px 22px 10px;
+}
+
+ion-alert .alert-title {
+  color: var(--text-strong);
+  font-size: var(--font-size-section-max);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -.2px;
+}
+
+ion-alert .alert-sub-title,
+ion-alert .alert-message {
+  color: var(--text-soft);
+  font-size: var(--font-size-body);
+  line-height: 1.5;
+}
+
+ion-alert .alert-input-group {
+  display: grid;
+  gap: 12px;
+  padding: 12px 22px 8px;
+}
+
+ion-alert .alert-input-wrapper {
+  margin: 0;
+}
+
+ion-alert input.alert-input,
+ion-alert textarea.alert-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  outline: 2px solid transparent;
+  color: var(--control-text);
+  background: var(--control-bg);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .025);
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+  color-scheme: var(--native-color-scheme);
+}
+
+ion-alert textarea.alert-input {
+  min-height: 96px;
+  resize: vertical;
+}
+
+ion-alert input.alert-input:hover,
+ion-alert textarea.alert-input:hover {
+  border-color: var(--border-strong);
+  background: var(--control-bg-hover);
+}
+
+ion-alert input.alert-input:focus,
+ion-alert input.alert-input:focus-visible,
+ion-alert textarea.alert-input:focus,
+ion-alert textarea.alert-input:focus-visible {
+  border-color: var(--control-focus-border);
+  outline-color: var(--focus-ring);
+  background: var(--control-bg);
+  box-shadow: var(--focus-shadow);
+}
+
+ion-alert input.alert-input::placeholder,
+ion-alert textarea.alert-input::placeholder {
+  color: var(--control-placeholder);
+  opacity: 1;
+}
+
+ion-alert .alert-button-group {
+  gap: 4px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+ion-alert button.alert-button {
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: var(--font-size-compact);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Confirmaciones y avisos de Actas, Reuniones y Documentos. */
+ion-alert.acta-delete-alert,
+ion-alert.reunion-cancel-alert,
+ion-alert.reunion-delete-alert,
+ion-alert.documento-folder-delete-alert,
+ion-alert.documento-feedback-alert {
+  --backdrop-opacity: .45;
+
+  .alert-wrapper {
+    width: min(420px, calc(100vw - 32px));
+    max-width: 420px;
+    border-radius: 18px;
+    font-family: var(--font-family);
+  }
+
+  .alert-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 24px 24px 14px;
+
+    &::before {
+      content: '!';
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--state-danger-bg);
+      color: var(--state-danger-text);
+      font-size: 26px;
+      font-weight: 700;
+    }
+  }
+
+  .alert-title { margin: 0; font-size: var(--font-size-section-max); }
+  .alert-message { padding: 0 24px 24px; line-height: 1.65; text-align: left; }
+  .alert-button-group {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--surface-subtle);
+  }
+
+  button.alert-button {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 92px;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    text-transform: none;
+    text-align: center;
+    line-height: 1.2;
+    font-size: var(--font-size-compact);
+  }
+
+  .alert-button-inner { display: flex; align-items: center; justify-content: center; height: auto; line-height: 1.2; }
+  button.acta-delete-cancel,
+  button.reunion-cancel-dismiss,
+  button.reunion-delete-dismiss,
+  button.documento-folder-delete-cancel { border-color: var(--border-default); background: var(--surface-overlay); color: var(--text-default); }
+  button.acta-delete-confirm,
+  button.reunion-cancel-confirm,
+  button.reunion-delete-confirm,
+  button.documento-folder-delete-confirm { background: var(--ion-color-danger-shade); color: var(--ion-color-danger-contrast); }
+  button.documento-feedback-accept { background: var(--ion-color-primary); color: var(--ion-color-primary-contrast); }
+  button:focus-visible { outline: 2px solid var(--control-focus-border); outline-offset: 2px; }
+}
+
+ion-alert.reunion-cancel-alert {
+  .alert-head::before { background: var(--state-warning-bg); color: var(--state-warning-text); }
+}
+
+ion-alert.reunion-cancel-alert,
+ion-alert.reunion-delete-alert,
+ion-alert.documento-folder-delete-alert,
+ion-alert.documento-feedback-alert {
+  button.alert-button {
+    min-width: 78px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 12px;
+    line-height: 1;
+  }
+  .alert-button-inner {
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: inherit;
+  }
+}
+
+@media (max-width: 480px) {
+  ion-alert .alert-wrapper {
+    width: calc(100vw - 24px);
+  }
+
+  ion-alert .alert-head {
+    padding: 19px 18px 8px;
+  }
+
+  ion-alert .alert-input-group {
+    padding: 10px 18px 7px;
+  }
+}
+
+ion-modal:has(.modal-body) {
+  --width: min(680px, calc(100% - 32px));
+  --height: auto;
+  --max-height: min(86dvh, 760px);
+  --border-radius: 18px;
+  --box-shadow: 0 25px 65px rgba(15, 42, 91, .28);
+}
+
+ion-modal:has(.modal-body) ion-header {
+  border-bottom: 1px solid var(--border-default);
+}
+
+ion-modal:has(.modal-body) ion-toolbar {
+  --background: var(--app-primary-deep);
+  --color: #fff;
+  --min-height: 68px;
+}
+
+ion-modal:has(.modal-body) ion-title {
+  font-size: var(--font-size-section-max);
+  font-weight: var(--font-weight-bold);
+}
+
+ion-modal:has(.modal-body) ion-button {
+  --color: #fff;
+}
+
+ion-modal.form-modal {
+  /* Los formularios largos necesitan una altura definida para que Ionic
+     reparta el espacio entre cabecera, contenido desplazable y acciones. */
+  --height: min(86dvh, 760px);
+}
+
+ion-modal:has(.modal-body) .modal-body {
+  min-height: 0;
+  max-height: calc(86dvh - 68px);
+  padding: 26px 26px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 84px;
+  color: var(--text-default);
+  background: var(--surface-overlay);
+}
+
+ion-modal.form-modal .modal-body {
+  height: calc(100% - 68px);
+  max-height: none;
+}
+
+ion-modal:has(.modal-body) .modal-body label {
+  display: grid;
+  gap: 7px;
+  color: var(--text-default);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+}
+
+ion-modal:has(.modal-body) .modal-body label.modal-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  width: max-content;
+}
+
+ion-modal:has(.modal-body) .modal-body label.modal-label .required {
+  display: inline;
+  margin: 0;
+}
+
+ion-modal:has(.modal-body) .modal-body input:not([type=checkbox]),
+ion-modal:has(.modal-body) .modal-body select,
+ion-modal:has(.modal-body) .modal-body textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  background: var(--control-bg);
+  color: var(--control-text);
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  outline: 2px solid transparent;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+ion-modal:has(.modal-body) .modal-body textarea {
+  min-height: 108px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+ion-modal:has(.modal-body) .modal-body input:focus,
+ion-modal:has(.modal-body) .modal-body select:focus,
+ion-modal:has(.modal-body) .modal-body textarea:focus {
+  border-color: var(--control-focus-border);
+  box-shadow: var(--focus-shadow);
+}
+
+ion-modal:has(.modal-body) .modal-body .toggle {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  background: var(--surface-subtle);
+  color: var(--text-default);
+}
+
+ion-modal:has(.modal-body) .members-field {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+}
+
+ion-modal:has(.modal-body) .members-field h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 14px;
+}
+
+ion-modal:has(.modal-body) .members-field h3 ion-icon {
+  color: var(--institutional-blue);
+  font-size: 19px;
+}
+
+ion-modal:has(.modal-body) .members-field p {
+  margin: 4px 0 11px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+ion-modal:has(.modal-body) .unit-head-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0 0 11px;
+  padding: 10px 11px;
+  border: 1px solid var(--state-success-border);
+  border-radius: 9px;
+  background: var(--state-success-bg);
+  color: var(--state-success-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+ion-modal:has(.modal-body) .unit-head-note ion-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #16a34a;
+  font-size: 16px;
+}
+
+ion-modal:has(.modal-body) .member-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+ion-modal:has(.modal-body) .member-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--state-info-border);
+  border-radius: 9px;
+  padding: 6px 7px 6px 10px;
+  background: var(--state-info-bg);
+  color: var(--state-info-text);
+  font-size: 12px;
+}
+
+ion-modal:has(.modal-body) .member-chip button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--institutional-blue);
+  cursor: pointer;
+  padding: 2px;
+}
+
+ion-modal:has(.modal-body) .member-empty {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-muted-accessible);
+  font-size: 12px;
+}
+
+ion-modal:has(.modal-body) .modal-actions {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  margin: 16px -26px 0;
+  padding: 16px 26px;
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-default);
+  box-shadow: 0 -8px 18px rgba(15, 23, 42, .06);
+}
+
+@media (max-width: 600px) {
+  ion-modal:has(.modal-body) {
+    --width: 100%;
+    --max-height: 100dvh;
+    --border-radius: 0;
+  }
+
+  ion-modal.form-modal {
+    --height: 100dvh;
+  }
+
+  ion-modal:has(.modal-body) .modal-body {
+    max-height: calc(100dvh - 68px);
+    padding: 20px 20px 0;
+  }
+
+  ion-modal.form-modal .modal-body {
+    height: calc(100dvh - 68px);
+    max-height: none;
+  }
+
+  ion-modal:has(.modal-body) .modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  ion-modal:has(.modal-body) .modal-actions {
+    margin: 14px -20px 0;
+    padding: 14px 20px;
+  }
+}
+
+/* Solicitud de aprobación de Documentos: reutiliza los campos y acciones compartidos. */
+ion-modal.documento-approval-modal {
+  --width: min(560px, calc(100% - 24px));
+  --max-height: min(90dvh, 640px);
+  --border-radius: 18px;
+
+  ion-toolbar { --min-height: 56px; }
+  ion-title { font-size: var(--font-size-section-max); }
+
+  .modal-body {
+    max-height: calc(90dvh - 56px);
+    padding: 20px 22px 0;
+  }
+
+  .approval-context {
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--surface-subtle);
+    color: var(--text-soft);
+    font-size: var(--font-size-body);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+
+    strong { color: var(--text-default); }
+  }
+
+  .modal-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .modal-body textarea { min-height: 96px; }
+
+  .modal-actions {
+    gap: 8px;
+    margin: 20px -22px 0;
+    padding: 12px 22px;
+    box-shadow: none;
+  }
+
+  .modal-actions > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 1 auto;
+    min-width: 84px;
+    min-height: 36px;
+    padding: 8px 14px;
+    font-size: var(--font-size-compact);
+    line-height: 1.2;
+    text-align: center;
+
+    ion-icon { font-size: 16px; }
+  }
+}
+
+@media (max-width: 480px) {
+  ion-modal.documento-approval-modal {
+    .modal-body { padding: 18px 16px 0; }
+    .modal-actions { margin: 18px -16px 0; padding: 12px 16px; }
+    .modal-actions > button { min-height: 40px; }
+  }
+}
+
+
+* {
+  font-family: var(--font-family);
+  box-sizing: border-box;
+}
+
+html {
+  /* 14 px con la configuración habitual del navegador (16 px).
+     La preferencia de texto existente puede ampliar esta raíz. */
+  font-size: 87.5%;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  margin: 0;
+  overflow-x: clip;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+}
+
+/* Base tipográfica; los formatos institucionales y estilos locales conservan
+   sus excepciones mediante la cascada, sin forzar tamaños con !important. */
+h1 {
+  font-size: var(--font-size-page);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-heading);
+}
+
+h2,
+h3 {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+}
+
+label,
+small {
+  font-size: var(--font-size-label);
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-family-code);
+}
+
+/* Base de accesibilidad compartida para todos los módulos. */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .64;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: var(--focus-shadow);
+}
+
+.table-wrapper,
+.table-container {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--surface-subtle);
+}
+
+.table-wrapper::-webkit-scrollbar,
+.table-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track {
+  background: var(--surface-subtle);
+  border-radius: 999px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--surface-subtle);
+  border-radius: 999px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover,
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.loading-skeleton__line {
+  height: 17px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e8eef7 25%, #f6f9fc 37%, #e8eef7 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.25s ease infinite;
+}
+
+.loading-skeleton__line:nth-child(3n) {
+  width: 72%;
+}
+
+.loading-skeleton__line:nth-child(3n + 2) {
+  width: 86%;
+}
+
+.content-feedback {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 42px 20px;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+}
+
+.content-feedback h3 {
+  margin: 0;
+  color: var(--text-primary, #172b4d);
+  font-size: 17px;
+}
+
+.content-feedback p {
+  margin: 0;
+  max-width: 44ch;
+}
+
+.content-feedback .btn-primary {
+  margin-top: 4px;
+}
+
+.field-error {
+  display: block;
+  margin-top: 6px;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.invalid {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .12) !important;
+}
+
+/* Modal de participantes: contenido compacto y estados de lista legibles. */
+ion-modal.participantes-modal {
+  --width: min(620px, calc(100% - 32px));
+  --max-height: min(78vh, 650px);
+  --border-radius: 20px;
+  --box-shadow: 0 24px 70px rgba(15, 42, 91, .24);
+}
+
+ion-modal.participantes-modal ion-toolbar {
+  --background: linear-gradient(120deg, #123a87 0%, var(--institutional-blue) 100%);
+  --color: #fff;
+  --min-height: 72px;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+ion-modal.participantes-modal ion-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+ion-modal.participantes-modal ion-button {
+  --color: #fff;
+  --background-hover: rgba(255, 255, 255, .14);
+  --border-radius: 10px;
+}
+
+.participantes-modal__content {
+  min-height: 252px;
+  padding: 24px 28px 28px;
+  background: linear-gradient(180deg, #f8fbff 0, #fff 180px);
+}
+
+.participantes-modal__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  color: #607896;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.participantes-modal__summary strong {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding-inline: 7px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+}
+
+.participantes-list {
+  display: grid;
+  gap: 9px;
+}
+
+.participante-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid #e2eaf4;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(15, 42, 91, .04);
+  color: #1f3654;
+}
+
+.participante-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.participante-nombre {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.participantes-empty {
+  display: grid;
+  min-height: 200px;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  text-align: center;
+}
+
+.participantes-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 4px;
+  border: 1px solid #d6e4fb;
+  border-radius: 18px;
+  background: var(--brand-soft);
+  color: var(--institutional-blue);
+}
+
+.participantes-empty__icon ion-icon {
+  font-size: 27px;
+}
+
+.participantes-empty h3 {
+  margin: 0;
+  color: #1f3654;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.participantes-empty p {
+  margin: 0;
+  color: #7085a3;
+  font-size: 13px;
+}
+
+.participantes-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 28px;
+  border-top: 1px solid #e5edf6;
+  background: #f8fbff;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -400% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Tema oscuro global*/
+html[data-theme="dark"] {
+  color-scheme: dark;
+  background: var(--bg-page);
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] ion-app,
+html[data-theme="dark"] ion-content {
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] ion-content {
+  --background: var(--bg-page);
+  --color: var(--text-primary);
+}
+
+html[data-theme="dark"] ion-card {
+  --background: var(--bg-surface) !important;
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] ion-alert .alert-wrapper {
+  border-color: var(--border-color);
+  background: var(--bg-surface);
+}
+
+html[data-theme="dark"] ion-alert :is(.alert-title, .alert-input-label) {
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] ion-alert :is(.alert-sub-title, .alert-message) {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] ion-alert :is(input.alert-input, textarea.alert-input) {
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] ion-alert .alert-button-group {
+  border-color: var(--border-color);
+}
+
+html[data-theme="dark"] :is(.topbar, .page-layout, .dashboard-layout, .layout-container,
+  .main-content, .page-main, .dashboard-main) {
+  background-color: var(--bg-page) !important;
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .topbar {
+  background: #fff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] :is(.app-card, .content-card, .table-card, .form-card, .header-row,
+  .table-section, .detail-card, .detail-empty, .table-container,
+  .search-bar, .dropdown, .modal-content, .modal-body,
+  .stat-card, .quick-card,
+  .calendar-card, .chart-card, .kpi-card, .panel, .section-card) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Configuración y componentes recientes. */
+html[data-theme="dark"] :is(.preference-card, .preference-card .card-heading, .action-bar,
+  .theme-option, .toggle-row.standalone,
+  .audit-list, .audit-columns, .audit-record, .record-detail,
+  .org-tree, .tree-toolbar, .search-box, .header-stats span,
+  .full-panel, .canales-panel, .channel-help-card, .event-toolbar,
+  .qr-code, .qr-actions button, .attendee-search, .qr-hint) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.preference-card, .audit-record, .org-tree, .full-panel, .canales-panel,
+  .channel-help-card, .qr-content) :is(h1, h2, h3, h4, strong, .node-name, .canal-nombre, .audit-field, .setting-block > label) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.preference-card, .audit-record, .org-tree, .full-panel, .canales-panel,
+  .channel-help-card, .qr-content) :is(p, small, .node-siglas, .canal-desc, .detail-cell, .date-cell) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(.page-title, .page-header h1, .page-header h2, .header-row h1,
+  .header-row h2, .table-header h3, .detail-title, .section-title,
+  ion-card-title,
+  .kpi-value, .kpi-label, .cell-name, .role-name, .sede-name,
+  .form-title, .modal-header h2, .modal-label, .checkbox-text,
+  .section-heading h2, .user-name-sm, .dashboard-header h1,
+  .section-header h2, .stat-value, .card-body h3) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.page-desc, .subtitle, .section-subtitle, .kpi-subtitle, .kpi-sub,
+  .kpi-label, .data-table td, .detail-value, .detail-desc .detail-value,
+  .field-helper, .form-group label, .modal-field label, .dropdown small,
+  .notif-content p, .notif-content small, .dashboard .subtitle,
+  .dashboard .section-subtitle, .stat-label, .card-body p) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(input, select, textarea, .form-input, .filtro-input, .filtro-select,
+  .modal-input, .modal-select, .modal-textarea, .search-input) {
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.search-wrapper, .filtro-search-wrapper, .btn-secondary, .btn-ghost,
+  .btn-export, .btn-cancel, .btn-icon, .page-btn, .action-btn, .btn-filtros) {
+  background: var(--bg-surface) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(th, .data-table th, .users-table th, .fc .fc-col-header-cell,
+  .fc .fc-button, .calendar-header) {
+  background: #17233a !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(td, .data-table td, .users-table td, .fc-theme-standard td,
+  .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid) {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(tr:hover td, .data-table tbody tr:hover, .clickable-row:hover,
+  .notif-item:hover, .dropdown-item:hover) {
+  background: var(--hover-bg) !important;
+}
+
+html[data-theme="dark"] :is(.fc .fc-button:hover, .btn-secondary:hover, .btn-ghost:hover, .btn-export:hover, .btn-cancel:hover, .btn-icon:hover) {
+  background: var(--hover-bg) !important;
+}
+
+html[data-theme="dark"] .fc .fc-daygrid-day.fc-day-today {
+  background: rgba(59, 130, 246, .16) !important;
+}
+
+html[data-theme="dark"] .fc .fc-col-header-cell-cushion {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .apexcharts-text {
+  fill: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .apexcharts-tooltip {
+  --apx-tt-bg: #121c2e;
+  --apx-tt-border: #33425c;
+  --apx-tt-arrow-bg: #121c2e;
+  --apx-tt-color: #f1f5f9;
+  --apx-tt-color-muted: #aebed2;
+  --apx-tt-shadow: 0 0 0 1px rgba(0, 0, 0, .28), 0 var(--apx-tt-shadow-y-mid) 18px -6px rgba(0, 0, 0, .5), 0 var(--apx-tt-shadow-y-far) 34px -12px rgba(0, 0, 0, .58);
+  --apx-tt-arrow-shadow: drop-shadow(0 0 0.5px rgba(0, 0, 0, .6)) drop-shadow(0 var(--apx-tt-arrow-drop-y) 4px rgba(0, 0, 0, .5));
+}
+
+html[data-theme="dark"] :is(.apexcharts-xaxistooltip, .apexcharts-yaxistooltip) {
+  --apx-axt-bg: #121c2e;
+  --apx-axt-border: #33425c;
+  --apx-axt-color: #f1f5f9;
+  --apx-axt-shadow: 0 5px 14px -4px rgba(0, 0, 0, .58), 0 1px 3px rgba(0, 0, 0, .45);
+}
+
+/* Dashboard*/
+html[data-theme="dark"] app-dashboard-kpis .dashboard-kpi-trend {
+  background: #1b2940 !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-color);
+}
+
+html[data-theme="dark"] app-dashboard-kpis .dashboard-kpi-trend.up {
+  background: rgba(22, 163, 74, .14) !important;
+  color: #86efac !important;
+  border-color: rgba(74, 222, 128, .24);
+}
+
+html[data-theme="dark"] app-dashboard-kpis .dashboard-kpi-trend.down {
+  background: rgba(220, 38, 38, .14) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, .24);
+}
+
+html[data-theme="dark"] app-dashboard-charts :is(.chart-heading > a, .chart-empty a) {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+  border-color: #294a8a !important;
+}
+
+html[data-theme="dark"] app-dashboard-charts :is(.chart-heading > a, .chart-empty a):hover {
+  background: #1e3a8a !important;
+  color: var(--brand-soft) !important;
+  border-color: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] app-dashboard-charts .empty-icon {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+  border: 1px solid #294a8a;
+}
+
+html[data-theme="dark"] app-dashboard-charts .chart-empty strong {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] app-dashboard-charts .chart-empty p {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(app-dashboard-activities, app-dashboard-notifications) .empty-state>span {
+  background: rgba(22, 163, 74, .14) !important;
+  color: #86efac !important;
+  border: 1px solid rgba(74, 222, 128, .24);
+}
+
+html[data-theme="dark"] app-dashboard-activities .activity-text,
+html[data-theme="dark"] app-dashboard-activities .activity-target {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] app-dashboard-activities .activity-text strong {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] app-dashboard-activities .activity-time {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"] app-dashboard-activities .card-heading>span {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+  border: 1px solid #294a8a;
+}
+
+html[data-theme="dark"] .tareas-content .actions-bar {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .tareas-content .kpi-card .kpi-icon {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+  border: 1px solid #294a8a;
+}
+
+html[data-theme="dark"] .tareas-content .action-btn:disabled {
+  background: #26354d !important;
+  border-color: #33425c !important;
+  color: #8293aa !important;
+  opacity: .78;
+}
+
+html[data-theme="dark"] .tareas-content .action-btn:disabled ion-icon {
+  color: #8293aa !important;
+}
+
+html[data-theme="dark"] :is(.tab-bar, .context-menu, .adjunto-item, .file-placeholder, .file-item,
+  .default-chip, .folder-choice, .folder-members, .member-picker label,
+  .detail-preview-card, .preview-toolbar, .preview-body, .pdf-page,
+  .pdf-page-header, .pdf-info-bar, .carpetas-view, .carpeta-card,
+  .permiso-card, .timeline-content, .stat-chip, .version-current,
+  .detail-section-group, .detail-actions, .progress-bar-track) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.dashboard-main, .page-main, .main-content) :is(h1, h2, h3, h4, h5, h6, [class$="-title"], [class$="-titulo"],
+  [class$="-nombre"], .tarea-titulo, .proyecto-name, .asignado-name,
+  .checklist-text, .context-item, .version-value, .detail-section-title) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.dashboard-main, .page-main, .main-content) :is([class$="-desc"], [class$="-label"], [class$="-date"],
+  [class$="-fecha"], [class$="-size"], .timeline-user, .timeline-detail,
+  .file-placeholder, .context-trigger, .context-item ion-icon, .pdf-text,
+  .pdf-sub, .version-cambios, .version-label, .cell-fecha, .cell-area,
+  .cell-version, .cell-date) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(.tab-bar, .context-menu, .folder-choice,
+  .member-picker label, .carpeta-card, .permiso-card, .default-chip,
+  .btn-close-detail, .toolbar-btn) {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.stats article, .filters > div, .filters select, .group-card, .content > aside,
+  .state, .actions button, .detail-list, .members article, .metrics article,
+  .content, .chat, header, .messages article, .section-head input) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.stats b, .stats span, .group-card h2, aside h2, .detail-list h3,
+  header h1, .metrics b, .section-head h2, .members strong) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.stats small, .group-card p, .group-card small, aside > p, dt, dd,
+  .breadcrumb, .page-header p, .members small, .metrics span, .meta,
+  .messages small, .messages article) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .filters :is(input, select) {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Actas y Configuración QR */
+html[data-theme="dark"] :is(.actas-content .card, .form-page .card, .qr-content .card,
+  .detalle-empty, .detalle-header, .tabs-container, .resumen-card,
+  .acuerdo-item, .info-card, .sesion-tab, .qr-url, .editor-toolbar,
+  .dropzone, .field-divider, .btn-back, .btn-menu, .btn-add-sesion,
+  .btn-action:not(.btn-action-primary), .btn-secondary) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .qr-content) :is(.card-title, .card-title-section, .detalle-titulo, .info-section-title,
+  .resumen-title, .resumen-value, .participante-nombre, .firma-nombre,
+  .adjunto-nombre, .cell-titulo, .cell-name, .field-label, .pi-value,
+  .qr-sesion-info strong, .sesion-tab-name, .info-card-value) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .qr-content) :is(.info-text, .info-list-item, .meta-item, .resumen-label, .participante-area,
+  .firma-rol, .firma-fecha, .adjunto-meta, .acuerdo-desc, .acuerdo-footer,
+  .page-info, .qr-url-value, .qr-sesion-info span, .qr-hint,
+  .qr-config-hint, .asistentes-sesion-info, .asistentes-label) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(.filtro-search-wrapper, .filtro-select, .filtro-date, .field-input,
+  .field-select, .field-input-sm, .editor-textarea, .orden-input,
+  .qr-content .btn-add-sesion, .qr-content .sesion-tab) {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.tabs-header, .table-mini th, .actas-content thead th,
+  .qr-content table th) {
+  background: #17233a !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Tema oscuro de módulos operativos.*/
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content, .grupos-content) .page-header,
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.card, .summary-item, .tabs-container, .resumen-card, .acuerdo-item,
+  .adjunto-item, .tab-bar, .context-menu, .checklist-item,
+  .checklist-editable-row, .tag, .content-feedback, .timeline-content,
+  .detail-actions, .carpetas-view, .carpeta-card, .detail-preview-card,
+  .preview-toolbar, .preview-body, .pdf-info-bar, .permiso-card,
+  .file-upload-btn, .file-item, .folder-choice, .folder-members,
+  .member-picker label, .chart-card, .detail-file-item, .detail-desc-text,
+  .orden-item, .resumen-item, .dropzone) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.actions-bar, .filtros-row, .tabs-header, .table-header, .detail-header) {
+  background: #101a2c !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.filtro-search-wrapper, .filtro-input, .filtro-select, .filtro-date,
+  .field-input, .field-select, .field-input-sm, .orden-input,
+  .editor-textarea, .checklist-input, .file-input) {
+  background: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  color-scheme: dark;
+}
+
+/* Configuración */
+html[data-theme="dark"] .layout-container .main-content ion-content {
+  --background: var(--bg-page) !important;
+  --color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.form-panel, .form-card,
+  .table-card, .table-container, .users-table-container, .audit-list,
+  .config-panel, .full-panel, .canales-panel, .channel-help-card,
+  .org-tree, .preference-card, .preferencia-card, .appearance-card,
+  .password-card, .profile-hero, .profile-info, .profile-header,
+  .security-card, .module-card, .matrix-card, .permission-item,
+  .role-info, .timeline-card, .history-container, .summary-card,
+  .quick-card, .stat-card, .resumen-card, .toolbar-card, .preview-card,
+  .guide-card, .guide-heading, .search-box, .coords-header, .map,
+  .modal-wrapper, .content-card, .section-card,
+  .modal-content, .modal-body, .modal-header, .modal-footer,
+  .membresia-row, .membresias-section, .professional-section,
+  .empty-state, .empty-content, .empty-membresias, .empty-users) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.form-header, .table-footer, .audit-columns, .record-detail,
+  .filters, .filters-bar, .search-bar, .search-wrapper, .tree-toolbar,
+  .event-toolbar, .settings-row, .save-bar, .pagination) {
+  background: #101a2c !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(h1, h2, h3, h4, strong, .page-title, .page-header h1, .page-header h2,
+  .form-heading, .form-header h2, .section-title, .section-heading,
+  .panel-title, .module-name, .module-title, .role-name, .user-fullname,
+  .sede-name, .node-name, .policy-name, .history-user, .summary-value,
+  .stat-value, .kpi-value, .info-value, .guide-page) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(p, small, label, .subtitle, .page-desc, .page-description, .page-eyebrow,
+  .section-subtitle, .panel-desc, .form-label, .field-label, .config-label,
+  .data-table td, .users-table td, .audit-field, .date-cell, .detail-cell,
+  .entity-cell, .cell-email, .cell-desc, .cell-resource, .sede-addr,
+  .sede-coords, .node-siglas, .node-responsable, .history-meta,
+  .history-date, .history-values, .empty-text, .guide-page .heading-copy small) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(input, select, textarea, .search-input, .search-field, .search-wrapper,
+  .config-input, .form-input, .field-input, .field-select, .select-input,
+  .date-input, .number-input, .value-input, .editable-cell) {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .layout-container .mobile-nav-toggle {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.data-table th, .users-table th, .matrix-table th, .perm-table th) {
+  background: #17233a !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.data-table td, .users-table td, .matrix-table td, .perm-table td,
+  .audit-record, .timeline-item, .history-item, .config-row, .setting-row) {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.data-table tbody tr:hover, .users-table tbody tr:hover, .audit-record:hover,
+  .timeline-item:hover, .history-item:hover, .guide-heading:hover) {
+  background: var(--hover-bg) !important;
+}
+
+/* Ajustes de componentes con estructuras internas propias. */
+html[data-theme="dark"] .layout-container .main-content :is(.node-row, .node-row.level-root, .category-card, .card-header,
+  .policy-item, .tree-controls button, .header-stats span) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.node-row:hover, .policy-item:hover, .expand-btn:hover) {
+  background: var(--hover-bg) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.policy-name, .policy-desc, .saving-label, .node-responsable,
+  .children-count, .module-desc, code) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.node-responsable, .children-count, code, .policy-count,
+  .order-btn, .btn-icon, .btn-cancel) {
+  background: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout-container .main-content :is(.value-input, .form-group input, .form-group select) {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.page-title, .card-title, .card-title-section, .detalle-titulo,
+  .info-section-title, .resumen-title, .resumen-value, .participante-nombre,
+  .firma-nombre, .adjunto-nombre, .cell-titulo, .cell-name,
+  .summary-item strong, .tarea-titulo, .proyecto-name, .asignado-name,
+  .checklist-text, .progress-value, .content-feedback h2,
+  .empty-content strong, .timeline-action, .carpeta-nombre, .doc-titulo,
+  .detail-section-title, .file-item-name, .folder-choice b,
+  .reporte-titulo, .chart-title, .detail-title, .detail-value,
+  .detail-file-name, .file-name, .field-label, .pi-value, .ri-value,
+  .tip-title) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.page-desc, .summary-item, .meta-item, .info-text, .info-list-item,
+  .resumen-label, .acuerdo-desc, .acuerdo-footer, .adjunto-tamano,
+  .page-info, .tab-item, .context-item, .context-trigger, .tarea-desc,
+  .proyecto-code, .asignado-cargo, .cell-fecha, .adjunto-size,
+  .content-feedback p, .empty-content p, .timeline-date, .timeline-user,
+  .timeline-detail, .carpeta-count, .doc-desc, .no-preview,
+  .no-preview-sub, .pdf-info-bar, .permiso-label, .file-item-size,
+  .folder-choice small, .folder-members p, .member-picker small,
+  .reporte-desc, .cell-date, .detail-label, .detail-desc-text,
+  .detail-files-header, .file-size, .pi-label, .ri-label, .dropzone-text,
+  .dropzone-hint, .session-hint, .tip-text) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.btn-icon, .context-menu-wrapper, .btn-menu, .btn-action:not(.btn-action-primary),
+  .btn-cancel, .btn-secondary, .page-btn, .check-btn, .btn-close-detail,
+  .btn-add-checklist, .checklist-remove, .adjunto-remove, .btn-detail,
+  .empty-content button, .btn-icon-danger, .toolbar-btn, .btn-preview-toggle,
+  .file-item-remove, .detail-file-download, .btn-detail-secondary,
+  .file-remove, .btn-back, .btn-icon-sm, .btn-add-row) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .form-page, .tareas-content, .inventario-content,
+  .documentos-content, .reportes-content) :is(.btn-icon, .btn-menu, .btn-action:not(.btn-action-primary), .btn-cancel,
+  .btn-secondary, .page-btn, .check-btn, .btn-close-detail,
+  .btn-add-checklist, .btn-detail, .empty-content button, .toolbar-btn,
+  .btn-preview-toggle, .file-item-remove, .detail-file-download,
+  .btn-detail-secondary, .file-remove, .btn-back, .btn-icon-sm,
+  .btn-add-row, .context-item, .tab-item, .checklist-item, .adjunto-item,
+  .carpeta-card, .permiso-card, .file-upload-btn, .member-picker label,
+  .detail-file-item):hover {
+  background: var(--hover-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.actas-content, .tareas-content, .documentos-content, .reportes-content) :is(.tab-btn.active, .tab-item.active, .carpeta-card.active, .permiso-card.active) {
+  background: #172554 !important;
+  border-color: var(--institutional-blue) !important;
+  color: var(--institutional-blue) !important;
+}
+
+/* Reportes > Plantillas. Esta vista conserva una composición propia y sus
+   fondos claros fijos dejaban el texto del tema oscuro sin contraste. */
+html[data-theme="dark"] .reportes-content .centro-tabs,
+html[data-theme="dark"] .reportes-content .template-panel {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+html[data-theme="dark"] .reportes-content .centro-tab {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .reportes-content .centro-tab:hover {
+  background: var(--hover-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .reportes-content .centro-tab.active {
+  background: var(--surface-selected) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .reportes-content .centro-tab-count {
+  background: var(--input-bg) !important;
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .reportes-content .centro-tab.active .centro-tab-count {
+  background: #25406f !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-panel-heading h2,
+html[data-theme="dark"] .reportes-content .template-card-copy h3 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-panel-heading p:not(.section-kicker),
+html[data-theme="dark"] .reportes-content .template-card-copy p {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-card {
+  background: linear-gradient(140deg, var(--surface-raised), var(--surface-subtle)) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-card:hover {
+  border-color: var(--institutional-blue) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28) !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-card-icon,
+html[data-theme="dark"] .template-modal-summary .template-card-icon {
+  background: var(--surface-selected) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-info {
+  background: var(--state-success-bg) !important;
+  color: var(--state-success-text) !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-action {
+  background: var(--surface-selected) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .reportes-content .template-action:hover {
+  background: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] .template-modal-summary {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .template-modal-summary h2 { color: var(--text-primary) !important; }
+html[data-theme="dark"] .template-modal-summary p { color: var(--text-secondary) !important; }
+
+html[data-theme="dark"] .actas-content .acta-row.selected {
+  background: #172554 !important;
+  box-shadow: inset 3px 0 var(--institutional-blue);
+}
+
+html[data-theme="dark"] .documentos-content .folder-choice.selected {
+  background: #172554 !important;
+  border-color: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] .documentos-content .folder-choice.shared.selected {
+  background: rgba(6, 78, 59, .35) !important;
+  border-color: #10b981 !important;
+}
+
+html[data-theme="dark"] :is(.documentos-content .carpeta-icon-wrapper,
+  .documentos-content .folder-choice > ion-icon:first-of-type,
+  .actas-content .page-heading-icon) {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] .inventario-content :is(.modal-input.invalid, .modal-select.invalid, .form-summary-error) {
+  background: rgba(127, 29, 29, .22) !important;
+  border-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .inventario-content :is(.skeleton-kpis span, .skeleton-content span) {
+  background: linear-gradient(90deg, #121c2e 25%, #1b2940 50%, #121c2e 75%) !important;
+  background-size: 200% 100% !important;
+}
+
+html[data-theme="dark"] .form-page .card-tip {
+  background: rgba(120, 53, 15, .22) !important;
+  border-color: #78350f !important;
+}
+
+/* Grupos: listado, detalle, miembros y chat. */
+html[data-theme="dark"] .dashboard-main :is(.stats article, .filters, .filters > div, .filters select, .group-card,
+  .content > aside, .state, .detail-list, .member-chip),
+html[data-theme="dark"] .layout main :is(header, .content, .chat, .state, .metrics article, .members article,
+  .message-bubble, .composer, .mention-list, .mention-option) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .dashboard-main .filters,
+html[data-theme="dark"] .layout main .chat {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .dashboard-main .filters :is(input, select),
+html[data-theme="dark"] .dashboard-main .modal-body :is(input, select, textarea),
+html[data-theme="dark"] .layout main :is(.section-head input, .composer textarea) {
+  background: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .layout main :is(header h1, .metrics b, .empty h2, .section-head h2, .members strong,
+  .chat-empty p, .mention-person b) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .layout main :is(header p, .breadcrumb, .meta, .metrics span, .empty, .members small,
+  .chat-empty small, .mention-person small, .message-bubble small) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .layout main nav {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .layout main nav button {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .layout main nav button:hover {
+  background: var(--hover-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .layout main nav button.active {
+  color: var(--institutional-blue) !important;
+  border-color: var(--institutional-blue) !important;
+}
+
+html[data-theme="dark"] .layout main .message-row.mine .message-bubble {
+  background: linear-gradient(135deg, #2563d4, var(--institutional-blue)) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .layout main .composer .mention-option:hover {
+  background: var(--hover-bg) !important;
+}
+
+html[data-theme="dark"] .layout main :is(.avatar, .message-avatar, .chat-empty span, .back) {
+  background: #172554 !important;
+  color: var(--institutional-blue) !important;
+}
+
+/* Reuniones */
+html[data-theme="dark"] :is(.reuniones-content .table-container, .reuniones-content .detail-card,
+  .reuniones-content .detail-empty, .reuniones-content .context-menu,
+  .reuniones-content .search-box, .reuniones-content .filter-selects select,
+  .reuniones-content .filter-selects input[type="date"], .reuniones-content .tab-bar,
+  .reuniones-content .btn-cancel, .reuniones-content .btn-close,
+  .reuniones-content .btn-outline, .reuniones-content .participante-item,
+  .reuniones-content .codigo-tag, .reuniones-content .detail-codigo) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .reunion-form-modal :is(.modal-body, .modal-actions) {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] :is(.reuniones-content, .reunion-form-modal) :is(.section-header h3, .date-badge, .reunion-titulo, .area-text,
+  .detail-header-info h4, .field-value, .participante-item) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] :is(.reuniones-content, .reunion-form-modal) :is(.reunion-sub, .time-text, .org-text, .lugar-text, .detail-sub,
+  .field-label, .codigo-tag, .detail-codigo, .tab-btn, .context-menu button) {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .reuniones-content :is(.search-box input,
+  .filter-selects select, .filter-selects input[type="date"], .modal-input,
+  .modal-select, .modal-textarea) {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+@media (max-width: 768px) {
+
+  html.native-shell,
+  html.native-shell body,
+  html.native-shell ion-app {
+    height: 100%;
+    min-height: 100%;
+  }
+
+  html.native-shell body {
+    overflow: hidden;
+  }
+
+  html.native-shell .dashboard-layout,
+  html.native-shell .dashboard-layout.sidebar-collapsed,
+  html.native-shell .page-layout,
+  html.native-shell .page-layout.sidebar-collapsed,
+  html.native-shell .requests-layout,
+  html.native-shell .requests-layout.sidebar-collapsed {
+    height: 100dvh !important;
+    min-height: 100dvh;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  html.native-shell .dashboard-main,
+  html.native-shell .page-main,
+  html.native-shell .requests-main {
+    min-height: calc(100dvh - 64px);
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+
+  html.native-shell .layout-container {
+    height: 100dvh !important;
+    min-height: 100dvh;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.native-shell .layout-container .main-content {
+    min-height: 100dvh;
+    overflow: visible;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  html.native-shell .table-wrapper,
+  html.native-shell .table-responsive,
+  html.native-shell .data-table-wrapper,
+  html.native-shell .table-container,
+  html.native-shell .tab-bar,
+  html.native-shell .segment-bar,
+  html.native-shell ion-segment,
+  html.native-shell .registro-table-wrapper,
+  html.native-shell .users-table-container,
+  html.native-shell .matrix-scroll,
+  html.native-shell .tab-participantes,
+  html.native-shell .tab-firmas,
+  html.native-shell .tab-asistencia,
+  html.native-shell .tab-historial,
+  html.native-shell .card-body:has(> table) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.native-shell :is(.dashboard-main, .page-main, .main-content, main, .modal-body) table:not(.fc-scrollgrid):not(.fc-col-header):not(.fc-scrollgrid-sync-table) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* FullCalendar usa tablas para calcular las siete columnas. Convertirlas en
+     bloques (como las tablas de datos) oculta la cuadrícula en Android WebView. */
+  html.native-shell .fc :is(.fc-scrollgrid, .fc-col-header, .fc-scrollgrid-sync-table) {
+    display: table !important;
+    overflow: visible !important;
+    touch-action: manipulation;
+  }
+
+  html.native-shell .detail-card,
+  html.native-shell .modal-body {
+    max-width: 100%;
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.native-shell .detail-card,
+  html.native-shell .modal-body {
+    overflow-y: auto;
+  }
+
+  html.native-shell .tab-bar>*,
+  html.native-shell ion-segment>* {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  html.native-shell .tab-bar {
+    overflow-x: scroll !important;
+    touch-action: pan-x !important;
+  }
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea,
+ion-button,
+ion-input,
+ion-select,
+ion-textarea {
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-control);
+}
+
+ion-button[size='small'] {
+  font-size: var(--font-size-compact);
+}
+
+/* Estas etiquetas Ionic contienen el control completo, no solo su rótulo. */
+ion-input .input-wrapper,
+ion-textarea .textarea-wrapper {
+  font-size: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:not(.native-input):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.page-container {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: clamp(16px, 2.5vw, 32px);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: var(--app-primary-dark);
+  font-size: var(--font-size-page);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-heading);
+  letter-spacing: -.02em;
+}
+
+.page-header p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
+.app-card,
+.content-card,
+.table-card,
+.form-card {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.btn-primary,
+.btn-submit {
+  min-height: 42px;
+  border-radius: 9px;
+  border: 1px solid var(--app-primary);
+  background: var(--app-primary);
+  color: var(--text-on-brand);
+  font-weight: var(--font-weight-semibold);
+  transition: background-color .18s ease, transform .18s ease;
+}
+
+.btn-primary:hover,
+.btn-submit:hover {
+  background: var(--app-primary-hover);
+  border-color: var(--app-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary,
+.btn-ghost {
+  border-radius: 9px;
+  border: 1px solid var(--app-primary);
+  background: var(--surface-panel);
+  color: var(--text-link);
+  font-weight: var(--font-weight-semibold);
+}
+
+.btn-danger {
+  border-color: var(--app-danger);
+  background: var(--app-danger);
+  color: #fff;
+}
+
+.status-badge,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 32px;
+  border: 1px dashed var(--border-default);
+  background: var(--empty-bg);
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.tareas-content .data-table td.empty-state {
+  display: table-cell;
+  width: auto !important;
+  padding: 0;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.tareas-content .data-table .empty-content {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 220px;
+  padding: 32px 20px;
+  color: var(--text-soft);
+}
+
+.tareas-content .data-table .empty-icon {
+  color: var(--empty-icon-text);
+  font-size: 42px;
+}
+
+.tareas-content .data-table .empty-content p {
+  width: auto;
+  max-width: 320px;
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+@media (max-width:768px) {
+  .tareas-content .data-table tbody td.empty-state {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .tareas-content .data-table tbody td.empty-state::before {
+    content: none;
+  }
+}
+
+table {
+  border-color: var(--table-divider);
+  background: var(--table-row-bg);
+  color: var(--text-default);
+  font-size: var(--font-size-compact);
+}
+
+th {
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-weight: var(--font-weight-bold);
+}
+
+td {
+  border-color: var(--table-divider);
+}
+
+tr:hover td {
+  background: var(--table-row-hover);
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .page-header> :last-child:not(:first-child) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .page-header h1 {
+    font-size: var(--font-size-page);
+  }
+
+  .page-header p {
+    font-size: var(--font-size-body);
+  }
+
+  .page-header button,
+  .page-header .btn-primary {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .table-wrapper,
+  .table-responsive,
+  .data-table-wrapper,
+  .table-container,
+  .table-scroll,
+  .registro-table-wrapper,
+  .users-table-container,
+  .matrix-scroll,
+  .tab-participantes,
+  .tab-firmas,
+  .tab-asistencia,
+  .tab-historial {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :is(.table-wrapper,
+    .table-responsive,
+    .data-table-wrapper,
+    .table-container,
+    .table-scroll,
+    .registro-table-wrapper,
+    .users-table-container,
+    .matrix-scroll,
+    .tab-participantes,
+    .tab-firmas,
+    .tab-asistencia,
+    .tab-historial)>table {
+    min-width: 620px;
+  }
+
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal-actions>button {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .dashboard-layout,
+  .dashboard-layout.sidebar-collapsed,
+  .page-layout,
+  .page-layout.sidebar-collapsed {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+  }
+
+  .dashboard-main,
+  .page-main {
+    min-width: 0;
+    padding: 16px !important;
+  }
+
+  .header-row,
+  .page-header,
+  .toolbar-actions,
+  .filters-row,
+  .filtros-row,
+  .actions-row {
+    min-width: 0;
+  }
+
+  .header-row>*,
+  .page-header>*,
+  .toolbar-actions>*,
+  .filters-row>*,
+  .filtros-row>* {
+    min-width: 0;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea,
+  ion-input,
+  ion-select,
+  ion-textarea {
+    font-size: var(--font-size-control-mobile);
+  }
+
+  .table-card,
+  .content-card,
+  .app-card {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .dashboard-layout.sidebar-collapsed .actas-grid.list-only {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .page-container,
+  .dashboard-main,
+  .page-main {
+    padding: 12px !important;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-submit {
+    min-height: 44px;
+  }
+
+  ion-modal:has(.modal-body) .modal-actions>button,
+  .modal-actions>button {
+    min-width: 0;
+  }
+}
+
+ion-card {
+  border-radius: var(--card-radius, 14px) !important;
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(0, 0, 0, 0.06)) !important;
+  margin: 0 !important;
+  --background: var(--bg-surface, #fcfcfd) !important;
+}
+
+/* FullCalendar overrides */
+.fc {
+  font-family: var(--font-family);
+}
+
+.fc .fc-toolbar-title {
+  font-size: var(--font-size-section) !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+.fc .fc-button {
+  font-family: var(--font-family);
+  font-size: var(--font-size-compact) !important;
+  padding: 4px 12px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: var(--surface-subtle) !important;
+  color: var(--text-soft) !important;
+  font-weight: 500 !important;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--surface-hover) !important;
+  }
+
+  &.fc-button-active {
+    background: var(--ion-color-primary) !important;
+    color: #fff !important;
+  }
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 4px 8px;
+}
+
+.fc .fc-col-header-cell-cushion {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-decoration: none;
+  padding: 8px 4px;
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background: var(--surface-selected);
+}
+
+/* ApexCharts overrides */
+.apexcharts-text {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+/* Foco neutro para formularios. Evita bordes, subrayados y separadores azules. */
+input:not(.native-input):not([type='checkbox']):not([type='radio']):focus,
+input:not(.native-input):not([type='checkbox']):not([type='radio']):focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  border-color: var(--control-focus-border);
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-shadow);
+}
+
+ion-input input.native-input:focus,
+ion-textarea textarea.native-textarea:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+ion-input input.native-input:-webkit-autofill,
+ion-input input.native-input:-webkit-autofill:hover,
+ion-input input.native-input:-webkit-autofill:focus,
+ion-input input.native-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--control-text);
+  caret-color: var(--control-text);
+  box-shadow: 0 0 0 1000px var(--control-bg) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+select:not([multiple]) {
+  color: var(--control-text);
+  background: var(--control-bg);
+  border-color: var(--control-border);
+  cursor: pointer;
+}
+
+select:not([multiple]) option {
+  color: var(--control-text);
+  background: var(--control-bg);
+}
+
+/* Fechas y horas siguen explícitamente el tema seleccionado. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
+input[type='month'],
+input[type='week'] {
+  color-scheme: var(--native-color-scheme);
+  accent-color: #64748b;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator,
+input[type='month']::-webkit-calendar-picker-indicator,
+input[type='week']::-webkit-calendar-picker-indicator {
+  width: 17px;
+  height: 17px;
+  padding: 3px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: .78;
+  filter: grayscale(1) brightness(.72);
+  transition: opacity .18s ease, background-color .18s ease;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover,
+input[type='month']::-webkit-calendar-picker-indicator:hover,
+input[type='week']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: var(--surface-hover);
+}
+
+@supports (appearance: base-select) {
+
+  select:not([multiple]),
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  select:not([multiple]) {
+    align-items: center;
+    transition: border-color .18s ease, background-color .18s ease;
+  }
+
+  select:not([multiple]):hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background-color: var(--control-bg-hover);
+  }
+
+  select:not([multiple])::picker-icon {
+    color: var(--text-soft);
+    transition: transform .18s ease;
+  }
+
+  select:not([multiple]):open::picker-icon {
+    transform: rotate(180deg);
+  }
+
+  ::picker(select) {
+    margin-block: 6px;
+    padding: 6px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--surface-overlay);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, .16);
+    color-scheme: var(--native-color-scheme);
+    scrollbar-width: thin;
+    scrollbar-color: #b8c5d6 transparent;
+  }
+
+  select:not([multiple]) option {
+    min-height: 40px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    align-items: center;
+    gap: 8px;
+  }
+
+  select:not([multiple]) option:hover,
+  select:not([multiple]) option:focus {
+    background: var(--surface-hover);
+  }
+
+  select:not([multiple]) option:checked {
+    color: #fff;
+    background: var(--app-primary-hover);
+    font-weight: 600;
+  }
+
+  select:not([multiple]) option::checkmark {
+    color: #fff;
+  }
+}
+
+/* Variantes oscuras para todos los controles nativos desplegables. */
+html[data-theme='dark'] select:not([multiple]),
+html[data-theme='dark'] select:not([multiple]) option,
+html[data-theme='dark'] select optgroup {
+  color: var(--text-primary);
+  background-color: var(--input-bg);
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] :is(input[type='date'], input[type='time'], input[type='datetime-local'],
+  input[type='month'], input[type='week']) {
+  color-scheme: dark !important;
+}
+
+html[data-theme='dark'] :is(input[type='date'], input[type='time'], input[type='datetime-local'],
+  input[type='month'], input[type='week'])::-webkit-calendar-picker-indicator {
+  filter: grayscale(1) brightness(1.65);
+}
+
+html[data-theme='dark'] :is(input[type='date'], input[type='time'], input[type='datetime-local'],
+  input[type='month'], input[type='week'])::-webkit-calendar-picker-indicator:hover {
+  background-color: var(--hover-bg);
+}
+
+@supports (appearance: base-select) {
+  html[data-theme='dark'] ::picker(select) {
+    border-color: var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    color-scheme: dark;
+    box-shadow: 0 16px 38px rgba(0, 0, 0, .42);
+    scrollbar-color: #40516a transparent;
+  }
+
+  html[data-theme='dark'] select:not([multiple]):hover:not(:disabled) {
+    border-color: #40516a;
+    background-color: var(--hover-bg);
+  }
+
+  html[data-theme='dark'] select:not([multiple])::picker-icon {
+    color: var(--text-muted);
+  }
+
+  html[data-theme='dark'] select:not([multiple]) option:hover,
+  html[data-theme='dark'] select:not([multiple]) option:focus {
+    background: var(--hover-bg);
+  }
+
+  html[data-theme='dark'] select:not([multiple]) option:checked {
+    color: var(--institutional-blue);
+    background: #172554;
+  }
+
+  html[data-theme='dark'] select:not([multiple]) option::checkmark {
+    color: var(--institutional-blue);
+  }
+}
+
+.input-wrap:focus-within,
+.search-box:focus-within,
+.search-field:focus-within,
+.search-bar:focus-within,
+.filtro-search-wrapper:focus-within,
+.filter-search-wrapper:focus-within,
+.field-wrap:focus-within,
+.input-wrapper:not(.sc-ion-input-md):not(.sc-ion-input-ios):focus-within,
+.password-field:focus-within,
+[class*='search-wrapper']:focus-within,
+[class*='search-box']:focus-within,
+[class*='search-bar']:focus-within,
+[class*='input-wrapper']:not(.sc-ion-input-md):not(.sc-ion-input-ios):focus-within,
+.form-control:focus-within,
+.custom-item.item-has-focus,
+.custom-item.ion-focused {
+  border-color: var(--control-focus-border);
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-shadow);
+}
+
+/* En controles compuestos el foco pertenece al marco exterior, no al input interno. */
+.input-wrap input:focus,
+.search-box input:focus,
+.search-field input:focus,
+.search-bar input:focus,
+.filtro-search-wrapper input:focus,
+.filter-search-wrapper input:focus,
+.field-wrap input:focus,
+.input-wrapper:not(.sc-ion-input-md):not(.sc-ion-input-ios) input:focus,
+.password-field input:focus,
+[class*='search-wrapper'] input:focus,
+[class*='search-box'] input:focus,
+[class*='search-bar'] input:focus,
+[class*='input-wrapper']:not(.sc-ion-input-md):not(.sc-ion-input-ios) input:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+:is(.input-wrap,
+  .search-box,
+  .search-field,
+  .search-bar,
+  .filtro-search-wrapper,
+  .filter-search-wrapper,
+  .field-wrap,
+  .input-wrapper:not(.sc-ion-input-md):not(.sc-ion-input-ios),
+  .password-field,
+  [class*='search-wrapper'],
+  [class*='search-box'],
+  [class*='search-bar'],
+  [class*='input-wrapper']:not(.sc-ion-input-md):not(.sc-ion-input-ios)):focus-within {
+  border-color: var(--control-focus-border);
+  box-shadow: var(--focus-shadow);
+}
+
+/* Tablas de configuración: una única paleta para filas normales y fijadas. */
+html[data-theme] body app-user-list .data-table.data-table tbody tr:nth-child(n),
+html[data-theme] body app-permission-list .perm-table tbody tr.perm-row:nth-child(n),
+html[data-theme] body app-permission-matrix .matrix-table tbody tr.matrix-row:nth-child(n),
+html[data-theme] body app-permission-matrix .matrix-table tbody tr.matrix-row:nth-child(n) td.col-perm:nth-child(n) {
+  background: var(--table-row-bg);
+}
+
+html[data-theme] body app-user-list .data-table.data-table tbody tr:nth-child(n):hover,
+html[data-theme] body app-permission-list .perm-table tbody tr.perm-row:nth-child(n):hover,
+html[data-theme] body app-permission-matrix .matrix-table tbody tr.matrix-row:nth-child(n):hover,
+html[data-theme] body app-permission-matrix .matrix-table tbody tr.matrix-row:nth-child(n):hover td.col-perm:nth-child(n) {
+  background: var(--table-row-hover);
+}
+
+html[data-theme] body app-user-list .data-table .badge.badge-outline {
+  border-color: var(--state-info-border);
+  background: var(--state-info-bg);
+  color: var(--state-info-text);
+}
+
+html[data-theme] body app-permission-list .table-footer .pagination.pagination button {
+  border-color: var(--control-border);
+  background: var(--control-bg);
+  color: var(--text-link);
+}
+
+ion-item.item-has-focus,
+ion-item.ion-focused {
+  --highlight-color-focused: var(--control-focus-border);
+  --highlight-background: var(--control-focus-border);
+}
+
+ion-input.has-focus,
+ion-textarea.has-focus,
+ion-select.has-focus,
+ion-searchbar.searchbar-has-focus {
+  --highlight-color-focused: var(--control-focus-border);
+  --border-color: var(--control-focus-border);
+  --box-shadow: var(--focus-shadow);
+}
+
+/* Lista institucional para selectores Ionic; evita el menú nativo rectangular. */
+ion-popover.institutional-select-popover {
+  --width: min(320px, calc(100vw - 32px));
+  --background: var(--surface-overlay);
+  --border-radius: 12px;
+  --box-shadow: 0 14px 36px rgba(15, 23, 42, .16);
+}
+
+ion-popover.institutional-select-popover ion-content {
+  --background: var(--surface-overlay);
+}
+
+ion-popover.institutional-select-popover ion-list {
+  padding: 6px;
+  background: var(--surface-overlay);
+}
+
+ion-popover.institutional-select-popover ion-item {
+  --min-height: 42px;
+  --background: transparent;
+  --background-hover: var(--surface-hover);
+  --background-focused: var(--surface-hover);
+  --color: var(--text-default);
+  --border-radius: 8px;
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+/* Presentación compartida de las acciones de Documentos y Reuniones. */
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) {
+  --width: min(420px, calc(100vw - 32px));
+  --max-width: 420px;
+  --max-height: calc(100dvh - 32px);
+  --background: var(--surface-overlay, #fff);
+  --backdrop-opacity: .42;
+  --button-background: transparent;
+  --button-background-hover: var(--brand-soft);
+  --button-background-hover-opacity: 1;
+  --button-background-focused: #e6effd;
+  --button-background-focused-opacity: 1;
+  --button-color: var(--text-default, #334155);
+  --color: var(--text-muted-accessible, #64748b);
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-wrapper {
+  padding: 0 16px 18px;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-group {
+  border: 1px solid var(--border-default, #dbe5f2);
+  border-radius: 18px;
+  background: var(--surface-overlay, #fff);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .22);
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-group-cancel {
+  margin-top: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-title {
+  min-height: auto;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border-subtle, #edf2f7);
+  background: linear-gradient(135deg, #f8fbff 0%, #fff 82%);
+  color: var(--text-strong, #172033);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-sub-title {
+  overflow: hidden;
+  padding-top: 5px;
+  color: var(--text-muted-accessible, #64748b);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-button {
+  min-height: 50px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border-subtle, #edf2f7);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-group>.action-sheet-button:last-child {
+  border-bottom: 0;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-button-inner {
+  justify-content: flex-start;
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-icon {
+  box-sizing: content-box;
+  width: 18px;
+  height: 18px;
+  margin: 0 12px 0 0;
+  padding: 7px;
+  border-radius: 9px;
+  background: var(--brand-soft);
+  color: var(--institutional-blue, var(--institutional-blue));
+  font-size: 18px;
+}
+
+ion-action-sheet.document-actions-sheet .document-action-download .action-sheet-icon {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+ion-action-sheet.document-actions-sheet .document-action-share .action-sheet-icon {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+ion-action-sheet.document-actions-sheet .document-action-edit .action-sheet-icon {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+ion-action-sheet.document-actions-sheet :is(.document-action-approve) {
+  color: #166534;
+}
+
+ion-action-sheet.document-actions-sheet :is(.document-action-approve) .action-sheet-icon {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+ion-action-sheet.document-actions-sheet :is(.document-action-reject, .document-action-delete),
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-destructive {
+  color: #b42318;
+}
+
+ion-action-sheet.document-actions-sheet :is(.document-action-reject, .document-action-delete) .action-sheet-icon,
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-destructive .action-sheet-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+ion-action-sheet.document-actions-sheet .document-action-cancel,
+ion-action-sheet.reunion-actions-sheet .action-sheet-cancel {
+  min-height: 46px;
+  color: var(--text-secondary, #475569);
+  font-weight: 700;
+}
+
+ion-action-sheet.document-actions-sheet .document-action-cancel .action-sheet-icon {
+  background: var(--surface-subtle, #f1f5f9);
+  color: var(--text-secondary, #475569);
+}
+
+ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-button:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--institutional-blue));
+  outline-offset: -3px;
+}
+
+html[data-theme='dark'] ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-title {
+  background: linear-gradient(135deg, #162238 0%, #111827 82%);
+}
+
+html[data-theme='dark'] ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-icon {
+  background: rgba(59, 130, 246, .16);
+}
+
+/* Menú secundario de Reuniones. Ionic lo monta en el documento global, fuera
+   del componente, por eso el contraste oscuro se define aquí. */
+ion-action-sheet.meeting-actions-sheet {
+  --width: min(520px, calc(100vw - 32px));
+  --max-width: 520px;
+  --background: var(--surface-overlay, #fff);
+  --button-background: transparent;
+  --button-color: var(--text-primary, #172033);
+  --color: var(--text-primary, #172033);
+}
+
+ion-action-sheet.meeting-actions-sheet .action-sheet-group {
+  border: 1px solid var(--border-default, #dbe5f2);
+  border-radius: 16px;
+  background: var(--surface-overlay, #fff);
+  box-shadow: 0 20px 56px rgba(15, 23, 42, .24);
+}
+
+ion-action-sheet.meeting-actions-sheet .action-sheet-title,
+ion-action-sheet.meeting-actions-sheet .action-sheet-button {
+  color: var(--text-primary, #172033);
+}
+
+html[data-theme='dark'] ion-action-sheet.meeting-actions-sheet {
+  --background: #0f192a;
+  --button-background: #0f192a;
+  --button-background-hover: #20314d;
+  --button-background-focused: #20314d;
+  --button-color: #fff;
+  --color: #fff;
+}
+
+html[data-theme='dark'] ion-action-sheet.meeting-actions-sheet .action-sheet-group {
+  border-color: #334763;
+  background: #0f192a;
+}
+
+html[data-theme='dark'] ion-action-sheet.meeting-actions-sheet :is(
+  .action-sheet-title,
+  .action-sheet-button,
+  .action-sheet-button-inner,
+  .action-sheet-icon
+) {
+  color: #fff !important;
+}
+
+html[data-theme='dark'] ion-action-sheet.meeting-actions-sheet .action-sheet-button {
+  border-color: #2a3a55;
+}
+
+@media (max-width: 599px) {
+  ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) {
+    --width: 100%;
+    --max-width: 100%;
+    --max-height: calc(100dvh - 16px);
+  }
+
+  ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-wrapper {
+    padding: 0 8px calc(8px + var(--ion-safe-area-bottom, 0px));
+  }
+
+  ion-action-sheet:is(.document-actions-sheet, .reunion-actions-sheet) .action-sheet-group {
+    border-radius: 16px;
+  }
+}
+
+ion-action-sheet.reunion-actions-sheet {
+  --button-background-hover: var(--surface-hover);
+  --button-background-focused: var(--surface-selected);
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-wrapper {
+  box-sizing: border-box;
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-container {
+  box-sizing: border-box;
+  max-height: var(--max-height);
+  padding-inline: 0;
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-button {
+  height: auto;
+  line-height: 1.4;
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-button-inner {
+  text-align: left;
+  white-space: normal;
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-icon {
+  flex-shrink: 0;
+  color: var(--text-link);
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-destructive {
+  --button-color: var(--state-danger-text);
+  color: var(--state-danger-text);
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-destructive .action-sheet-icon,
+html[data-theme='dark'] ion-action-sheet.reunion-actions-sheet .action-sheet-destructive .action-sheet-icon {
+  background: var(--state-danger-bg);
+  color: var(--state-danger-text);
+}
+
+ion-action-sheet.reunion-actions-sheet .action-sheet-group-cancel .action-sheet-button-inner {
+  justify-content: center;
+}
+
+@media (min-width: 600px) {
+  ion-action-sheet.reunion-actions-sheet .action-sheet-wrapper {
+    top: 0;
+    height: fit-content;
+    margin: auto;
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 599px) {
+  ion-action-sheet.reunion-actions-sheet .action-sheet-container {
+    max-height: calc(100dvh - 24px - var(--ion-safe-area-top, 0px) - var(--ion-safe-area-bottom, 0px));
+  }
+}
+
+.input-wrap button:focus-visible,
+.custom-item button:focus-visible,
+.password-field button:focus-visible,
+.visibility-button:focus-visible {
+  outline-color: var(--focus-ring);
+}
+
+input[type='checkbox']:focus-visible+*,
+input[type='radio']:focus-visible+* {
+  outline-color: var(--focus-ring);
+}
+
+.actas-content .info-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.actas-content .info-section-title ion-icon {
+  flex: 0 0 auto;
+  color: var(--institutional-blue);
+  font-size: 17px;
+}
+
+.actas-content .info-empty-state {
+  display: flex;
+  align-items: flex-start;
+  min-height: 54px;
+  padding: 2px 0 4px;
+  color: var(--text-default);
+}
+
+.actas-content .info-empty-state strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.actas-content .info-empty-state p {
+  margin: 7px 0 0;
+  color: var(--text-muted-accessible);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+
+  &:hover {
+    background: #94a3b8;
+  }
+}

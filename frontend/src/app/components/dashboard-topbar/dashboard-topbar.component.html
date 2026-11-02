@@ -1,0 +1,19 @@
+<header class="topbar">
+  <div class="topbar-left"><button class="icon-btn menu-btn" type="button" aria-label="Abrir menú principal" (click)="menuToggle.emit()" title="Abrir menú principal"><ion-icon name="menu-outline" aria-hidden="true" /></button></div>
+  <div class="topbar-right">
+    <button class="icon-btn theme-btn" type="button" (click)="toggleTheme()" [disabled]="themeSaving()" [attr.aria-label]="isDarkTheme() ? 'Activar tema claro' : 'Activar tema oscuro'" [title]="isDarkTheme() ? 'Tema claro' : 'Tema oscuro'">
+      <ion-icon [name]="isDarkTheme() ? 'sunny-outline' : 'moon-outline'" />
+    </button>
+    <div class="notification-wrapper">
+      <button #notificationTrigger class="icon-btn" (click)="toggleNotifications($event)" aria-label="Ver notificaciones" [attr.aria-expanded]="showNotifications()"><ion-icon name="notifications-outline" />@if (unreadCount > 0) {<span class="badge">{{ unreadCount }}</span>}</button>
+      @if (showNotifications()) {<section #notificationPanel class="dropdown dropdown-notifications"><div class="dropdown-header"><div><strong>Notificaciones</strong><small>{{ unreadCount }} nuevas</small></div><button class="mark-all" [disabled]="!unreadCount" (click)="markAllAsRead()">Marcar todas como leídas</button></div><div class="dropdown-body">@if (loadingNotifications()) {<div class="empty-state">Cargando notificaciones…</div>} @else {@if (notificationError()) {<div class="empty-state error" role="alert">{{ notificationError() }}</div>}@for (n of visibleNotifications(); track n.id) {<button type="button" class="notif-item unread" (click)="openNotification(n)"><ion-icon class="notif-icon" [name]="notificationIcon(n)" /><div class="notif-content"><strong>{{ n.title }}</strong><p>{{ n.message }}</p><small>{{ n.timestamp | date:'short' }}</small></div><span class="notif-indicator"></span></button>} @empty {<div class="empty-state"><ion-icon name="information-circle-outline" />No tienes notificaciones nuevas</div>}}</div></section>}
+    </div>
+    <div class="user-wrapper">
+      <button #userTrigger class="user-btn" (click)="toggleUserMenu($event)" aria-label="Abrir menú de usuario" [attr.aria-expanded]="showUserMenu()">
+        @if (resolvedUserPhoto() && !avatarImageFailed()) {<img class="user-avatar-img" [src]="resolvedUserPhoto()" alt="Foto de perfil" (error)="onAvatarError()" />} @else {<span class="user-avatar-sm">{{ userName().slice(0, 1) }}</span>}
+        <span class="user-name-sm">{{ userName() }}</span>
+      </button>
+      @if (showUserMenu()) {<div #userMenu class="dropdown dropdown-user"><button class="dropdown-item" (click)="navigateFromUserMenu('/config/profile')"><ion-icon name="person-circle-outline" />Mi perfil</button><button class="dropdown-item" (click)="navigateFromUserMenu('/config')"><ion-icon name="menu-outline" />Configuración</button><button class="dropdown-item" (click)="navigateFromUserMenu('/config/preferences')"><ion-icon name="notifications-outline" />Preferencias</button><hr /><button class="dropdown-item dropdown-item-danger" (click)="logoutFromUserMenu()"><ion-icon name="log-out-outline" />Cerrar sesión</button></div>}
+    </div>
+  </div>
+</header>

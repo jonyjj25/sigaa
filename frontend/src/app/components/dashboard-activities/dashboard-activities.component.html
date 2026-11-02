@@ -1,0 +1,25 @@
+<ion-card class="activities-card">
+  <ion-card-header>
+    <div class="card-heading"><div><ion-card-title>Actividad reciente</ion-card-title><p>Últimos movimientos administrativos</p></div><span>{{ activities().length }}</span></div>
+  </ion-card-header>
+  <ion-card-content>
+    <div class="timeline">
+      @for (activity of activities(); track activity.id; let i = $index) {
+        <div class="timeline-item">
+          <div class="timeline-avatar" [style.background]="getColor(i)">
+            {{ initials(activity.user) }}
+          </div>
+          <div class="timeline-content">
+            <span class="activity-text">
+              <strong>{{ activity.user }}</strong> {{ activity.action }}
+              <span class="activity-target">{{ activity.target }}</span>
+            </span>
+            <span class="activity-time">{{ timeAgo(activity.timestamp) }}</span>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state"><span>✓</span><strong>Todo está al día</strong><p>No hay movimientos administrativos recientes.</p></div>
+      }
+    </div>
+  </ion-card-content>
+</ion-card>

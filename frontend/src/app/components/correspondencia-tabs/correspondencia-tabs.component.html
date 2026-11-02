@@ -1,0 +1,11 @@
+<nav class="correspondence-nav" aria-label="Secciones de correspondencia">
+  <div class="correspondence-title"><span>Gestión documental</span><strong>Correspondencia</strong></div>
+  <div class="tab-list">
+    @if (auth.hasPermission('Notas', 'Ver')) {
+      <a routerLink="/correspondencia/notas" [class.active]="active() === 'notas'" [attr.aria-current]="active() === 'notas' ? 'page' : null"><ion-icon name="reader-outline" /><span><strong>Notas</strong><small>Notas institucionales</small></span></a>
+    }
+    @if (auth.hasPermission('Memos', 'Ver')) {
+      <a routerLink="/correspondencia/memos" [class.active]="active() === 'memos'" [attr.aria-current]="active() === 'memos' ? 'page' : null"><ion-icon name="mail-outline" /><span><strong>Memos</strong><small>Memorandos internos</small></span></a>
+    }
+  </div>
+</nav>

@@ -1,0 +1,127 @@
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.chart-card {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--app-border);
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow .2s, transform .2s;
+}
+
+.chart-card:hover {
+    box-shadow: 0 12px 28px rgba(15, 42, 91, .09);
+    transform: translateY(-1px);
+}
+
+.chart-card ion-card-header {
+    padding: 18px 20px 4px;
+}
+
+.chart-card ion-card-content {
+    min-height: 285px;
+    display: grid;
+    place-items: center;
+    padding: 0 14px 16px;
+}
+
+.chart-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.chart-heading ion-card-title {
+    color: #162b49;
+    font-size: 15px;
+    font-weight: 750;
+}
+
+.chart-heading p {
+    margin: 4px 0 0;
+    color: #8190a5;
+    font-size: 11px;
+}
+
+.chart-heading>a {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 7px;
+    color: var(--institutional-blue);
+    background: var(--brand-soft);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.chart-heading>a:hover {
+    background: var(--brand-hover);
+}
+
+.chart-empty {
+    width: 100%;
+    min-height: 245px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 12px;
+    border-radius: 14px;
+    color: #4f76aa;
+    background: #edf4fc;
+    font-size: 22px;
+}
+
+.chart-empty strong {
+    color: #334155;
+    font-size: 13px;
+}
+
+.chart-empty p {
+    max-width: 260px;
+    margin: 6px 0 13px;
+    color: #8a99ad;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.chart-empty a {
+    padding: 8px 12px;
+    border: 1px solid var(--brand-border);
+    border-radius: 8px;
+    color: var(--institutional-blue);
+    background: #fff;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+:host ::ng-deep .apexcharts-canvas {
+    max-width: 100% !important;
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chart-card {
+        transition: none;
+    }
+}

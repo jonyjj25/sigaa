@@ -1,0 +1,220 @@
+name: CI
+
+on:
+  push:
+    branches: [keicy, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+  NODE_VERSION: "24"
+
+jobs:
+  backend:
+    name: Backend, pruebas y cobertura
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_DB: sigaa_ci
+          POSTGRES_USER: sigaa_ci
+          POSTGRES_PASSWORD: sigaa_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sigaa_ci -d sigaa_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend/sigaa-api
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/sigaa_ci
+      DB_USERNAME: sigaa_ci
+      DB_PASSWORD: sigaa_ci_password
+      JWT_SECRET: ci-only-secret-at-least-thirty-two-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verificar avisos de dependencias Java de ejecución
+        run: |
+          bash ./mvnw --batch-mode dependency:tree -DoutputType=json -DoutputFile=target/dependencies.json
+          node ../../ops/scripts/audit-maven-osv.mjs target/dependencies.json target/dependency-security.json
+      - name: Verificar reanudación y guardas del respaldo completo
+        run: node ../../ops/scripts/full-backup.test.mjs
+      - name: Ejecutar pruebas y verificar cobertura
+        run: |
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/initdb"
+          mkdir -p target/security-workspace
+          bash ./mvnw --batch-mode -Dsigaa.security.validation=true -Djunit.jupiter.extensions.autodetection.enabled=true \
+            "-Dsigaa.test.postgres.bin=$pg_bin" "-Dsigaa.test.workdir=$PWD/target/security-workspace" verify
+      - name: Publicar reporte JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-backend
+          path: backend/sigaa-api/target/security-build/site/jacoco
+          if-no-files-found: warn
+
+  schema:
+    name: Validar instalación del esquema SQL desde cero
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_DB: sigaa_flyway
+          POSTGRES_USER: sigaa_flyway
+          POSTGRES_PASSWORD: sigaa_flyway_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sigaa_flyway -d sigaa_flyway"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend/sigaa-api
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/sigaa_flyway
+      DB_USERNAME: sigaa_flyway
+      DB_PASSWORD: sigaa_flyway_password
+      JWT_SECRET: ci-only-secret-at-least-thirty-two-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - name: Instalar y validar el esquema canónico
+        run: |
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/initdb"
+          mkdir -p target/security-workspace
+          bash ./mvnw --batch-mode -Dtest=SigaaApiApplicationTests \
+            -Dsigaa.security.validation=true -Djunit.jupiter.extensions.autodetection.enabled=true \
+            "-Dsigaa.test.postgres.bin=$pg_bin" "-Dsigaa.test.workdir=$PWD/target/security-workspace" test
+
+  frontend:
+    name: Lint, pruebas y build web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:android-config
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run audit:ux
+      - run: npm run test:ci
+      - run: npm run build
+      - name: Publicar cobertura frontend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: frontend/coverage
+          if-no-files-found: warn
+      - name: Publicar build web
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigaa-web
+          path: frontend/www
+          if-no-files-found: error
+
+  apk:
+    name: Construir APK de depuración
+    runs-on: ubuntu-latest
+    needs: frontend
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      SIGAA_ANDROID_API_URL: https://api.invalid.local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Sincronizar aplicación Android
+        run: npm run sync:android
+      - name: Compilar APK
+        working-directory: frontend/android
+        run: bash ./gradlew assembleDebug --no-daemon
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigaa-debug-apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  docker:
+    name: Validar y construir imágenes Docker
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_DB: sigaa_ci
+      POSTGRES_USER: sigaa_ci
+      POSTGRES_PASSWORD: sigaa_ci_password
+      APP_DB_PASSWORD: TEST_ONLY_runtime_ci_123
+      FLYWAY_DB_PASSWORD: TEST_ONLY_migrator_ci_456
+      BACKUP_DB_PASSWORD: TEST_ONLY_backup_ci_789
+      JWT_SECRET: TEST_ONLY_ci_session_key_12345678901234567890
+      CORS_ALLOWED_ORIGINS: https://sigaa.invalid
+      QR_PUBLIC_URL: https://sigaa.invalid
+      SIGAA_TRUSTED_PROXIES: 127.0.0.1/32
+      SIGAA_FONTS_DIR_HOST: /tmp/sigaa-fonts
+      BACKUP_ENCRYPTION_KEY_BASE64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      BACKUP_EXTERNAL_DIR_HOST: /tmp/sigaa-backups-external
+      ALERTMANAGER_CONFIG_FILE: ./ops/monitoring/alertmanager.webhook.example.yml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar variables no secretas de compilación
+        run: mkdir -p /tmp/sigaa-fonts /tmp/sigaa-backups-external
+      - name: Validar Compose de producción
+        run: docker compose -f docker-compose.prod.yml config --quiet
+      - name: Construir API y web
+        run: docker compose -p sigaa-ci -f docker-compose.prod.yml build api web
+      - name: Preparar permisos de la copia externa ficticia
+        run: sudo chown 10001:10001 /tmp/sigaa-backups-external
+      - name: Arrancar despliegue desechable y verificar proxy
+        run: |
+          docker compose -p sigaa-ci -f docker-compose.prod.yml up -d --wait --wait-timeout 240
+          bash ops/scripts/test-web-endpoints.sh
+      - name: Limpiar despliegue desechable
+        if: always()
+        run: docker compose -p sigaa-ci -f docker-compose.prod.yml down -v

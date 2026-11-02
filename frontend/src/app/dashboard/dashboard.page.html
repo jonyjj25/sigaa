@@ -1,0 +1,107 @@
+<app-dashboard-sidebar
+  [items]="menuItems()"
+  [collapsed]="authService.sidebarCollapsed()"
+  (logout)="onLogout()"
+/>
+
+<div class="dashboard-layout" [class.sidebar-collapsed]="authService.sidebarCollapsed()">
+  <app-dashboard-topbar
+    [notifications]="notifications()"
+    [userName]="user()?.nombre || 'Usuario'"
+    [userRole]="user()?.roles || ''"
+    [userPhoto]="userPhoto()"
+    [collapsed]="authService.sidebarCollapsed()"
+    (menuToggle)="onMenuToggle()"
+    (logout)="onLogout()"
+  />
+
+  <main class="dashboard-main">
+    <div class="dashboard-content">
+      <section class="dashboard-hero">
+        <div>
+          <span class="eyebrow">Resumen institucional</span>
+          <h1>{{ greeting() }}, {{ user()?.nombre || 'Usuario' }}</h1>
+          <p>Consulta el estado actual de la gestión y los próximos compromisos.</p>
+        </div>
+        <div class="hero-actions">
+          @if (lastUpdated()) { <span class="updated"><ion-icon name="checkmark-circle-outline" /> Actualizado ahora</span> }
+          <button type="button" class="refresh-button" (click)="refreshDashboard()" [disabled]="loading()">
+            <ion-icon name="refresh-outline" /> {{ loading() ? 'Actualizando…' : 'Actualizar' }}
+          </button>
+        </div>
+      </section>
+
+      @if (todayItems().length > 0) {
+        <section class="dashboard-workspace" aria-label="Pendientes para hoy">
+          <section class="workspace-card today-card" aria-labelledby="today-title">
+            <div class="workspace-heading">
+              <div><span class="eyebrow">ENFOQUE DEL DÍA</span><h2 id="today-title">Pendientes para hoy</h2></div>
+              <a routerLink="/reuniones" class="workspace-link">Ver agenda</a>
+            </div>
+            <div class="today-list">
+              @for (item of todayItems(); track item.id) {
+                <a class="today-item" [routerLink]="itemRoute(item)">
+                  <span class="today-icon" [class.meeting]="item.type === 'reunion'"><ion-icon [name]="item.type === 'reunion' ? 'calendar-outline' : 'flash-outline'" /></span>
+                  <span class="today-copy"><strong>{{ item.title }}</strong><small>{{ itemKind(item) }} · {{ itemTime(item) }}</small></span>
+                  <ion-icon name="chevron-forward-outline" class="item-arrow" aria-hidden="true" />
+                </a>
+              }
+            </div>
+          </section>
+        </section>
+      }
+
+      @if (sectionStates().kpis.loading) {
+        <section class="skeleton-kpis" aria-label="Cargando resumen">
+          @for (item of [1,2,3,4]; track item) { <div class="skeleton-card"></div> }
+        </section>
+      } @else {
+        <section class="section-kpis" aria-label="Indicadores principales">
+          @if (sectionStates().kpis.error) { <p class="section-message error" role="alert">{{ sectionStates().kpis.error }}</p> }
+          <app-dashboard-kpis [kpis]="kpis()" />
+        </section>
+      }
+
+      <section class="section-charts">
+        @defer (on viewport) {
+        <app-dashboard-charts
+          [tareasPorEstado]="tareasPorEstado()"
+          [inventarioPorEstado]="inventarioPorEstado()"
+          [reunionesPorEstado]="reunionesPorEstado()"
+          [showInventario]="showInventarioChart()"
+          [chartData]="chartData()"
+          [states]="sectionStates()"
+        />
+        } @placeholder { <div class="skeleton-charts" aria-label="Cargando gráficos"><div class="skeleton-panel"></div><div class="skeleton-panel"></div></div> }
+      </section>
+
+      <section class="section-calendar">
+        @if (sectionStates().events.loading) { <p class="section-message" role="status">Cargando calendario…</p> }
+        @else {
+          @if (sectionStates().events.error) { <p class="section-message error" role="alert">{{ sectionStates().events.error }}</p> }
+          <app-dashboard-calendar [events]="events()" />
+        }
+      </section>
+
+      <div class="grid-2cols">
+        <section class="section-activities">
+          @if (sectionStates().activities.loading) { <p class="section-message" role="status">Cargando actividades…</p> }
+          @else {
+            @if (sectionStates().activities.error) { <p class="section-message error" role="alert">{{ sectionStates().activities.error }}</p> }
+            <app-dashboard-activities [activities]="activities()" />
+          }
+        </section>
+        <section class="section-notifications">
+          @if (notificationsLoading()) { <p class="section-message" role="status">Cargando notificaciones…</p> }
+          @else {
+          @if (notificationsError()) { <p class="section-message error" role="alert">{{ notificationsError() }}</p> }
+          <app-dashboard-notifications
+            [notifications]="notifications()"
+            (notificationClick)="openNotification($event)"
+          />
+          }
+        </section>
+      </div>
+    </div>
+  </main>
+</div>

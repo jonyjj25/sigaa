@@ -1,0 +1,24 @@
+<ion-card class="notifications-card">
+  <ion-card-header>
+    <div class="card-heading"><div><ion-card-title>Notificaciones</ion-card-title><p>Avisos que requieren tu atención</p></div><span>{{ notifications().length }}</span></div>
+  </ion-card-header>
+  <ion-card-content>
+    <div class="notifications-list">
+      @for (n of notifications(); track n.id) {
+        <div class="notif-item" [class.read]="n.read" role="button" tabindex="0" (click)="onOpen(n)" (keydown.enter)="onOpen(n)" (keydown.space)="$event.preventDefault(); onOpen(n)">
+          <ion-icon [name]="typeIcons[n.type]" class="notif-icon" [style.color]="typeColors[n.type]" />
+          <div class="notif-body">
+            <strong>{{ n.title }}</strong>
+            <p>{{ n.message }}</p>
+            <small>{{ n.timestamp | date:'short' }}</small>
+          </div>
+          @if (!n.read) {
+            <span class="unread-dot"></span>
+          }
+        </div>
+      } @empty {
+        <div class="empty-state"><span>✓</span><strong>Sin notificaciones pendientes</strong><p>Los nuevos avisos aparecerán aquí.</p></div>
+      }
+    </div>
+  </ion-card-content>
+</ion-card>

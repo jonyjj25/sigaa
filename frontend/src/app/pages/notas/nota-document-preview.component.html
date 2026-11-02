@@ -1,0 +1,29 @@
+<div class="preview-backdrop" role="presentation" tabindex="-1" (click)="closed.emit()" (keydown.escape)="closed.emit()">
+  <section class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="nota-preview-title" (click)="$event.stopPropagation()">
+    <header>
+      <div><span>Documento institucional · Carta</span><h2 id="nota-preview-title">{{ esMemo ? 'Vista previa del memo' : 'Vista previa de la nota' }}</h2></div>
+      <button type="button" aria-label="Cerrar vista previa" title="Cerrar" (click)="closed.emit()">×</button>
+    </header>
+    <div class="preview-scroll" aria-live="polite">
+      <p class="preview-status" [class.preview-status-anulada]="data.estado === 'ANULADA'">{{ esMemo ? (data.estado === 'ANULADA' ? 'MEMO ANULADO' : 'MEMORANDO INSTITUCIONAL') : data.estado === 'BORRADOR' ? 'BORRADOR · DOCUMENTO NO OFICIAL' : data.estado === 'ANULADA' ? 'NOTA ANULADA' : 'NOTA OFICIALIZADA' }}</p>
+      @if (loading()) { <p class="preview-message">Preparando las páginas del documento…</p> }
+      @else if (error()) {
+        <div class="preview-message" role="alert"><p>{{ error() }}</p><button type="button" (click)="cargar()">Reintentar</button></div>
+      } @else {
+        <p class="page-count">{{ paginas().length }} {{ paginas().length === 1 ? 'página' : 'páginas' }} · 8½ × 11 pulgadas</p>
+        @for (pagina of paginas(); track $index) {
+          <figure class="document-page">
+            <img class="document-sheet" [src]="pagina" [alt]="'Página ' + ($index + 1) + ' de ' + paginas().length + (esMemo ? ' del memo ' : ' de la nota ') + data.numero" />
+            <figcaption>Página {{ $index + 1 }} de {{ paginas().length }}</figcaption>
+          </figure>
+        }
+      }
+    </div>
+    <footer><div><p>{{ nombreArchivo() || 'Preparando documento institucional.' }}</p>
+      @if (errorDocumento()) { <p role="alert">{{ errorDocumento() }}</p> }</div>
+      <div class="preview-actions">@if (pdfUrl && data.estado === 'OFICIALIZADA' && !loading() && !error()) {
+      <button type="button" [disabled]="preparandoDocumento()" (click)="obtenerPdf()">Descargar PDF</button>
+      <button type="button" [disabled]="preparandoDocumento()" (click)="obtenerPdf(true)">Imprimir</button>
+      }<button type="button" (click)="closed.emit()">Cerrar</button></div></footer>
+  </section>
+</div>

@@ -1,0 +1,53 @@
+<div class="charts-grid">
+  <ion-card class="chart-card">
+    <ion-card-header><div class="chart-heading"><div><ion-card-title>Tareas por estado</ion-card-title><p>Distribución actual de las asignaciones</p></div><a routerLink="/tareas">Ver tareas</a></div></ion-card-header>
+    <ion-card-content>
+      @if (states().tasks?.loading) { <p role="status">Cargando tareas…</p> }
+      @else if (states().tasks?.error) { <p role="alert">{{ states().tasks?.error }}</p> }
+      @else if (totalTareas() > 0) {
+        <apx-chart [series]="donutTareasSeries()" [chart]="donutChart" [labels]="donutTareasLabels()" [colors]="donutTareasColors()" [dataLabels]="donutDataLabels" [legend]="donutLegend" [plotOptions]="donutPlotOptions" [tooltip]="donutTooltip" [responsive]="donutResponsive" [stroke]="donutStroke" />
+      } @else {
+        <div class="chart-empty"><span class="empty-icon">✓</span><strong>No hay tareas registradas</strong><p>Cuando existan asignaciones aparecerán agrupadas por estado.</p><a routerLink="/tareas">Ir a tareas</a></div>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  @if (showInventario()) {
+    <ion-card class="chart-card">
+      <ion-card-header><div class="chart-heading"><div><ion-card-title>Inventario por estado</ion-card-title><p>Condición actual de los activos</p></div><a routerLink="/inventario">Ver inventario</a></div></ion-card-header>
+      <ion-card-content>
+        @if (states().inventory?.loading) { <p role="status">Cargando inventario…</p> }
+        @else if (states().inventory?.error) { <p role="alert">{{ states().inventory?.error }}</p> }
+        @else if (totalInventario() > 0) {
+          <apx-chart [series]="donutInventarioSeries()" [chart]="donutChart" [labels]="donutInventarioLabels()" [colors]="donutInventarioColors()" [dataLabels]="donutDataLabels" [legend]="donutLegend" [plotOptions]="donutPlotOptions" [tooltip]="donutTooltip" [responsive]="donutResponsive" [stroke]="donutStroke" />
+        } @else {
+          <div class="chart-empty"><span class="empty-icon">□</span><strong>No hay activos registrados</strong><p>El resumen aparecerá al incorporar bienes al inventario.</p><a routerLink="/inventario">Ir a inventario</a></div>
+        }
+      </ion-card-content>
+    </ion-card>
+  }
+
+  <ion-card class="chart-card">
+    <ion-card-header><div class="chart-heading"><div><ion-card-title>Reuniones por estado</ion-card-title><p>Seguimiento de la agenda institucional</p></div><a routerLink="/reuniones">Ver reuniones</a></div></ion-card-header>
+    <ion-card-content>
+      @if (states().meetings?.loading) { <p role="status">Cargando reuniones…</p> }
+      @else if (states().meetings?.error) { <p role="alert">{{ states().meetings?.error }}</p> }
+      @else if (totalReuniones() > 0) {
+        <apx-chart [series]="donutReunionesSeries()" [chart]="donutChart" [labels]="donutReunionesLabels()" [colors]="donutReunionesColors()" [dataLabels]="donutDataLabels" [legend]="donutLegend" [plotOptions]="donutPlotOptions" [tooltip]="donutTooltip" [responsive]="donutResponsive" [stroke]="donutStroke" />
+      } @else {
+        <div class="chart-empty"><span class="empty-icon">○</span><strong>No hay reuniones registradas</strong><p>Las reuniones programadas aparecerán en este resumen.</p><a routerLink="/reuniones">Programar reunión</a></div>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  @if (states().chartData?.loading || states().chartData?.error || chartData().categories.length) {
+    <ion-card class="chart-card">
+      <ion-card-header><div class="chart-heading"><div><ion-card-title>Actividad administrativa</ion-card-title><p>Operaciones registradas durante los últimos seis meses</p></div><a routerLink="/config/audit">Ver auditoría</a></div></ion-card-header>
+      <ion-card-content>
+        @if (states().chartData?.loading) { <p role="status">Cargando actividad administrativa…</p> }
+        @else if (states().chartData?.error) { <p role="alert">{{ states().chartData?.error }}</p> }
+        @else { <apx-chart [series]="activitySeries()" [chart]="activityChart" [xaxis]="activityXaxis()" [yaxis]="activityYaxis" [stroke]="activityStroke" [grid]="activityGrid" [markers]="activityMarkers" [colors]="activityColors" [dataLabels]="donutDataLabels" [tooltip]="activityTooltip" /> }
+      </ion-card-content>
+    </ion-card>
+  }
+</div>

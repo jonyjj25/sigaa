@@ -1,0 +1,58 @@
+.page-header {
+  min-height: 94px;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  border: 1px solid #d8e1ec;
+  border-left: 5px solid #17365d;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 42, 75, .045);
+}
+
+.page-header .btn-primary { border-radius: 6px; }
+
+.stats article {
+  min-height: 96px;
+  padding: 18px 20px;
+  border-top: 3px solid #2b5f97;
+  border-radius: 8px;
+  box-shadow: 0 2px 7px rgba(15, 42, 75, .04);
+}
+
+.stats ion-icon {
+  color: #1f4e85;
+  background: var(--brand-soft);
+  border-radius: 7px;
+}
+
+.filters {
+  padding: 12px;
+  border: 1px solid #dbe3ed;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.filters div,
+.filters select { border-radius: 6px; }
+
+.content {
+  grid-template-columns: minmax(0, 1.55fr) minmax(360px, .85fr);
+  gap: 18px;
+}
+
+.group-card,
+aside,
+.state {
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(15, 42, 75, .05);
+}
+
+.group-card:hover,
+.group-card.selected { transform: none; }
+
+.actions button { border-radius: 6px; }
+
+@media (max-width: 1024px) {
+  .content { grid-template-columns: 1fr; }
+  aside { position: static; }
+}
