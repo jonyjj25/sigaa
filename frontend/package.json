@@ -69,7 +69,7 @@
     "@angular/language-service": "20.3.34",
     "@capacitor/cli": "8.6.0",
     "@ionic/angular-toolkit": "^12.0.0",
-    "@types/jasmine": "~5.1.0",
+    "@types/jasmine": "~7.0.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.16.0",
