@@ -51,7 +51,7 @@ jobs:
             "-Dsigaa.test.postgres.bin=$pg_bin" "-Dsigaa.test.workdir=$PWD/target/security-workspace" verify
       - name: Publicar reporte JaCoCo
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-backend
           path: backend/sigaa-api/target/security-build/site/jacoco
@@ -103,13 +103,13 @@ jobs:
       - run: npm run build
       - name: Publicar cobertura frontend
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-frontend
           path: frontend/coverage
           if-no-files-found: warn
       - name: Publicar build web
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sigaa-web
           path: frontend/www
@@ -143,7 +143,7 @@ jobs:
         working-directory: frontend/android
         run: bash ./gradlew assembleDebug --no-daemon
       - name: Publicar APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sigaa-debug-apk
           path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
