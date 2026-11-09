@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configurar Java para CodeQL
         if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -72,7 +72,7 @@ jobs:
       - name: NPM audit completo (críticas)
         working-directory: frontend
         run: npm audit --audit-level=critical
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
