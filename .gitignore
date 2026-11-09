@@ -50,3 +50,12 @@ ops/monitoring/alertmanager.local.yml
 output/~$*
 output/apk/
 output/db-backups/
+
+# Evidencias locales de validación.
+output/*.log
+output/npm-*.json
+output/production-*.json
+output/review-*/
+
+# Archivo local de documentación, herramientas y archivos generados.
+/9107/

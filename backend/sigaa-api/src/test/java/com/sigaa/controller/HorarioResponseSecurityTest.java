@@ -61,7 +61,7 @@ class HorarioResponseSecurityTest {
         @Bean SecurityPolicyService policy() { return mock(SecurityPolicyService.class); }
         @Bean UserDetailsService details() { return mock(UserDetailsService.class); }
         @Bean JwtFilter filter(UsuarioRepository users, UserDetailsService details) {
-            return new JwtFilter(mock(JwtUtil.class), details, mock(SecurityIpService.class), users);
+            return new JwtFilter(mock(JwtUtil.class), details, mock(SecurityIpService.class), users, mock(SecurityPolicyService.class));
         }
         @Bean PlatformTransactionManager transactionManager() {
             // Solo activa el contexto transaccional de Spring; no abre conexiones.

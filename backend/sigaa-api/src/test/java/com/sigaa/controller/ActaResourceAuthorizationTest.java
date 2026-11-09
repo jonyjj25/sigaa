@@ -57,7 +57,7 @@ class ActaResourceAuthorizationTest {
         @Bean SecurityPolicyService policy() { return mock(SecurityPolicyService.class); }
         @Bean UserDetailsService userDetails() { return mock(UserDetailsService.class); }
         @Bean JwtFilter jwtFilter(UsuarioRepository usuarios, UserDetailsService userDetails) {
-            return new JwtFilter(mock(JwtUtil.class), userDetails, mock(SecurityIpService.class), usuarios);
+            return new JwtFilter(mock(JwtUtil.class), userDetails, mock(SecurityIpService.class), usuarios, mock(SecurityPolicyService.class));
         }
         @Bean ActaRepository actas() { return mock(ActaRepository.class); }
         @Bean ActaParticipanteRepository participantes() { return mock(ActaParticipanteRepository.class); }

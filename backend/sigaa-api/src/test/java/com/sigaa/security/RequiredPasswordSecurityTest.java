@@ -196,6 +196,7 @@ class RequiredPasswordSecurityTest {
     }
 
     @Test void expiredRegularPasswordsCannotKeepSessionsOrMintNewOnes() throws Exception {
+        when(policy.requiresPeriodicPasswordChange()).thenReturn(true);
         transactions.committed.setCambioContrasenaRequerido(false);
         transactions.committed.setFechaExpiracion(LocalDateTime.now().minusMinutes(1));
         mvc.perform(session(get("/api/documentos"), false)).andExpect(status().isUnauthorized())
@@ -204,6 +205,33 @@ class RequiredPasswordSecurityTest {
             .content("{\"username\":\"usuario_prueba\",\"password\":\"TEST_ONLY_NOT_REAL\"}"))
             .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("PASSWORD_EXPIRED"));
         mvc.perform(session(post("/api/auth/logout"), true)).andExpect(status().isNoContent());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void periodicPolicyControlsExistingSessionsLoginAndSecondFactor(boolean enabled) throws Exception {
+        when(policy.requiresPeriodicPasswordChange()).thenReturn(enabled);
+        transactions.committed.setCambioContrasenaRequerido(false);
+        transactions.committed.setFechaExpiracion(LocalDateTime.now().minusDays(1));
+        when(jwt.hasClaim("pending-test", "2fa_pending")).thenReturn(true);
+        when(jwt.extractLongClaim("pending-test", "token_version")).thenReturn(4L);
+        when(twoFactorService.verifyCode(EMAIL, "123456")).thenReturn(true);
+        when(jwt.generateToken(eq(EMAIL), anyString(), eq(4L))).thenReturn("session-before");
+        when(policy.getJwtExpirationMs()).thenReturn(3_600_000L);
+        for (boolean cookie : List.of(false, true)) {
+            mvc.perform(session(get("/api/documentos"), cookie))
+                    .andExpect(enabled ? status().isUnauthorized() : status().isOk());
+        }
+        var login = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"usuario_prueba\",\"password\":\"TEST_ONLY_NOT_REAL\"}"));
+        login.andExpect(enabled ? status().isUnauthorized() : status().isOk());
+        var secondFactor = mvc.perform(post("/api/auth/2fa/authenticate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tempToken\":\"pending-test\",\"code\":\"123456\"}"));
+        secondFactor.andExpect(enabled ? status().isUnauthorized() : status().isOk());
+        if (enabled) {
+            login.andExpect(jsonPath("$.code").value("PASSWORD_EXPIRED"));
+            secondFactor.andExpect(jsonPath("$.code").value("PASSWORD_EXPIRED"));
+        }
     }
 
     @Test void meReturnsOnlyIdentityAndRequiredChangeWithoutLoadingPermissions() throws Exception {

@@ -49,7 +49,7 @@ class PrivateFileAccessTest {
         @Bean SecurityPolicyService policy() { return mock(SecurityPolicyService.class); }
         @Bean UserDetailsService userDetails() { return mock(UserDetailsService.class); }
         @Bean JwtFilter jwtFilter(UsuarioRepository usuarios, UserDetailsService userDetails) {
-            return new JwtFilter(mock(JwtUtil.class), userDetails, mock(SecurityIpService.class), usuarios);
+            return new JwtFilter(mock(JwtUtil.class), userDetails, mock(SecurityIpService.class), usuarios, mock(SecurityPolicyService.class));
         }
         @Bean DocumentoRepository documentos() { return mock(DocumentoRepository.class); }
         @Bean CarpetaRepository carpetas() { return mock(CarpetaRepository.class); }

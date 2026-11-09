@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import com.sigaa.service.SecurityIpService;
+import com.sigaa.service.SecurityPolicyService;
 import com.sigaa.repository.UsuarioRepository;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -36,12 +37,15 @@ public class JwtFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
     private final SecurityIpService securityIpService;
     private final UsuarioRepository usuarioRepository;
+    private final SecurityPolicyService securityPolicyService;
 
-    public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService, SecurityIpService securityIpService, UsuarioRepository usuarioRepository) {
+    public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService, SecurityIpService securityIpService,
+                     UsuarioRepository usuarioRepository, SecurityPolicyService securityPolicyService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.securityIpService = securityIpService;
         this.usuarioRepository = usuarioRepository;
+        this.securityPolicyService = securityPolicyService;
     }
 
     @Override
@@ -95,7 +99,8 @@ public class JwtFilter extends OncePerRequestFilter {
                             "TEMPORARY_PASSWORD_EXPIRED", "La contraseña temporal expiró. Solicita un nuevo restablecimiento.");
                     return;
                 }
-                if (usuario.get().isPasswordExpired() && !isLogout(request)) {
+                if (securityPolicyService.requiresPeriodicPasswordChange()
+                        && usuario.get().isPasswordExpired() && !isLogout(request)) {
                     writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "PASSWORD_EXPIRED",
                             "La contraseña venció. Usa Recuperar contraseña para establecer una nueva.");
                     return;

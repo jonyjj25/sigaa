@@ -37,16 +37,25 @@ try {
     };
     rewrite(config);
     const configFile = path.join(temporary, `caddy-${trusted}.json`); await writeFile(configFile, JSON.stringify(config));
-    const processHandle = spawn(executable, ['run', '--config', configFile], { stdio: 'ignore' });
+    const processHandle = spawn(executable, ['run', '--config', configFile], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
+    let startupOutput = '', startupError;
+    processHandle.stderr.on('data', chunk => { startupOutput = (startupOutput + chunk.toString()).slice(-8192); });
+    processHandle.on('error', error => { startupError = error; });
     try {
       const base = `http://127.0.0.1:${port}`;
       let ready = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        try { if ((await fetch(`${base}/api/config`)).ok) { ready = true; break; } } catch { /* Arranque del proceso. */ }
-        if (processHandle.exitCode !== null) throw new Error('Caddy terminó durante el arranque');
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        try {
+          const response = await fetch(`${base}/api/config`, { signal: AbortSignal.timeout(1000) });
+          const ok = response.ok; await response.body?.cancel();
+          if (ok) { ready = true; break; }
+        } catch { /* Arranque del proceso. */ }
+        if (startupError) throw startupError;
+        if (processHandle.exitCode !== null) throw new Error(`Caddy terminó durante el arranque: ${startupOutput}`);
         await new Promise(resolve => setTimeout(resolve, 50));
       }
-      assert.ok(ready, 'Caddy debe iniciar');
+      assert.ok(ready, `Caddy no respondió en el límite de arranque: ${startupOutput}`);
       const result = await fetch(`${base}/api/config`, { headers: { 'X-Forwarded-For': '198.51.100.20', 'X-Forwarded-Proto': 'https', Forwarded: 'for=198.51.100.99' } });
       assert.match(result.headers.get('content-type'), /application\/json/);
       const body = await result.json(); assert.equal(body.path, '/api/config');

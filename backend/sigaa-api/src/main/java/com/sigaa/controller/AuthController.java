@@ -205,7 +205,7 @@ public class AuthController {
             if (Boolean.TRUE.equals(usuario.getActivo()) && passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
                 loginRateLimitService.recordLoginSuccess(ipAddress, username);
                 if (usuario.isTemporaryPasswordExpired()) return expiredTemporaryPasswordResponse();
-                if (usuario.isPasswordExpired()) return expiredPasswordResponse();
+                if (passwordHistoryService.isExpired(usuario)) return expiredPasswordResponse();
                 // SUCCESS: reset failed attempts, update last access
                 usuario.setIntentosFallidos(0);
                 usuario.setBloqueado(false);
@@ -345,7 +345,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(new LoginResponse("error", "La cuenta no está disponible"));
         }
         if (usuario.isTemporaryPasswordExpired()) return expiredTemporaryPasswordResponse();
-        if (usuario.isPasswordExpired()) return expiredPasswordResponse();
+        if (passwordHistoryService.isExpired(usuario)) return expiredPasswordResponse();
         boolean requiredChange = Boolean.TRUE.equals(usuario.getCambioContrasenaRequerido());
         Set<String> allRoles = requiredChange ? Set.of() : loadRoles(usuario.getId());
         String rolesStr = String.join(",", allRoles);

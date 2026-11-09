@@ -22,7 +22,9 @@ services:
       - ./ops/postgres/provision-roles.sql:/opt/sigaa/provision-roles.sql:ro
       - ./backend/sigaa-api/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/020-sigaa-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      # El servidor temporal de initdb solo escucha por socket; esperar TCP
+      # evita arrancar Hibernate antes de terminar el esquema y los permisos.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 10

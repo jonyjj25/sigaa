@@ -188,7 +188,8 @@ class BackupServiceResilienceTest {
     void restorationFailuresCleanTheDumpAndStopAllProcesses(String mode) throws Exception {
         Backup backup = service.create("manual", "prueba@example.test");
         service.restoreMode = mode;
-        assertThrows(IllegalStateException.class, () -> service.testRestore(backup.getId(), "prueba@example.test"));
+        var failure = assertThrows(IllegalStateException.class, () -> service.testRestore(backup.getId(), "prueba@example.test"));
+        if (mode.equals("child-hang")) assertTrue(failure.getMessage().contains("tiempo máximo"));
         assertEquals("fallido", committed.get(backup.getId()).getVerificacionEstado());
         assertEquals("completado", committed.get(backup.getId()).getEstado());
         assertTrue(service.sql.stream().anyMatch(query -> query.startsWith("DROP DATABASE")));
@@ -256,20 +257,23 @@ class BackupServiceResilienceTest {
             String file = dump ? command.get(command.indexOf("-f") + 1) : command.getLast();
             String mode = dump ? dumpMode : restoreMode;
             Path childPid = root.resolve("child.pid");
+            Path ready = root.resolve("fixture.ready"), run = root.resolve("fixture.run");
             Files.deleteIfExists(childPid);
+            Files.deleteIfExists(ready); Files.deleteIfExists(run);
             Process p = new ProcessBuilder(fixtureCommand(mode, file, childPid.toString()))
                     .redirectErrorStream(true).start(); processes.add(p);
-            if (mode.startsWith("child-")) {
-                // El timeout mide el comando bloqueado, no el arranque de dos JVM de prueba.
-                long readyDeadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
-                while (!Files.isRegularFile(childPid) && p.isAlive() && System.nanoTime() < readyDeadline) {
-                    try { Thread.sleep(10); }
-                    catch (InterruptedException ex) { Thread.currentThread().interrupt(); p.destroyForcibly(); throw new IOException("Fixture interrumpida", ex); }
-                }
-                if (!Files.isRegularFile(childPid)) {
-                    p.destroyForcibly(); throw new IOException("La fixture no inició su proceso hijo");
-                }
+            // Todos los modos confirman el arranque antes de iniciar el timeout
+            // del servicio. Así una JVM lenta no simula un pg_restore bloqueado.
+            long readyDeadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+            while (!Files.isRegularFile(ready) && p.isAlive() && System.nanoTime() < readyDeadline) {
+                try { Thread.sleep(10); }
+                catch (InterruptedException ex) { Thread.currentThread().interrupt(); p.destroyForcibly(); throw new IOException("Fixture interrumpida", ex); }
             }
+            if (!Files.isRegularFile(ready) || (mode.startsWith("child-") && !Files.isRegularFile(childPid))) {
+                p.descendants().forEach(ProcessHandle::destroyForcibly);
+                p.destroyForcibly(); throw new IOException("La fixture no completó su arranque");
+            }
+            Files.writeString(run, "run");
             return p;
         }
         @Override Connection openConnection(String url) throws Exception {
@@ -298,13 +302,22 @@ class BackupServiceResilienceTest {
             String mode = args[0];
             if (mode.equals("child")) { Thread.sleep(30000); return; }
             Path file = Path.of(args[1]);
+            if (mode.startsWith("child-")) {
+                Process child = new ProcessBuilder(fixtureCommand("child", args[1], args[2])).inheritIO().start();
+                Files.writeString(Path.of(args[2]), Long.toString(child.pid()));
+            }
+            Path root = Path.of(args[2]).getParent();
+            Files.writeString(root.resolve("fixture.ready"), "ready");
+            long startDeadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+            while (!Files.isRegularFile(root.resolve("fixture.run"))) {
+                if (System.nanoTime() >= startDeadline) throw new IllegalStateException("La prueba no inició el comando");
+                Thread.sleep(10);
+            }
             if (mode.equals("missing")) { Files.deleteIfExists(file); return; }
             if (mode.equals("empty")) { Files.write(file, new byte[0]); return; }
             if (mode.equals("fail")) { System.err.println("TEST_PRIVATE: fallo ficticio"); System.exit(9); }
             if (mode.equals("flood")) for (int i = 0; i < 256; i++) { System.out.write(new byte[8192]); System.err.write(new byte[8192]); }
             if (mode.startsWith("child-")) {
-                Process child = new ProcessBuilder(fixtureCommand("child", args[1], args[2])).inheritIO().start();
-                Files.writeString(Path.of(args[2]), Long.toString(child.pid()));
                 Thread.sleep(400);
                 if (mode.equals("child-fail")) System.exit(9);
             }

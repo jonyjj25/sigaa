@@ -3,6 +3,7 @@ package com.sigaa.security;
 import com.sigaa.model.Usuario;
 import com.sigaa.repository.UsuarioRepository;
 import com.sigaa.service.SecurityIpService;
+import com.sigaa.service.SecurityPolicyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
@@ -37,7 +38,7 @@ class JwtFilterTest {
         userDetailsService = mock(UserDetailsService.class);
         securityIpService = mock(SecurityIpService.class);
         usuarios = mock(UsuarioRepository.class);
-        filter = new JwtFilter(jwtUtil, userDetailsService, securityIpService, usuarios);
+        filter = new JwtFilter(jwtUtil, userDetailsService, securityIpService, usuarios, mock(SecurityPolicyService.class));
         when(securityIpService.checkAccess(anyString())).thenReturn(new SecurityIpService.AccessCheckResult(true, null));
         when(jwtUtil.validateToken("token-vigente")).thenReturn(true);
         when(jwtUtil.extractUsername("token-vigente")).thenReturn("cuenta@institucion.gob.pa");

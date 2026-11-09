@@ -22,10 +22,6 @@
     "test:ci": "ng test --configuration ci --browsers=ChromeHeadlessCI --code-coverage",
     "lint": "ng lint",
     "audit:ux": "node scripts/check-ux.mjs",
-    "migrate:ui-tokens": "node scripts/migrate-ui-tokens.mjs",
-    "fix:a11y-titles": "node scripts/fix-icon-button-titles.mjs",
-    "cleanup:css": "node scripts/cleanup-css-specificity.mjs",
-    "audit:css": "node scripts/analyze-css.mjs",
     "android:release": "node scripts/build-android-release.mjs"
   },
   "private": true,

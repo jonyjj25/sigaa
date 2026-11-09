@@ -51,6 +51,10 @@ public class PasswordHistoryService {
         repository.save(entry);
     }
 
+    public boolean isExpired(Usuario user) {
+        return policyService.requiresPeriodicPasswordChange() && user.isPasswordExpired();
+    }
+
     private void setExpiry(Usuario user) {
         int days = policyService.getPasswordExpirationDays();
         user.setFechaExpiracion(days > 0 ? LocalDateTime.now().plusDays(days) : null);

@@ -39,7 +39,7 @@ class DashboardCountsSecurityTest {
         @Bean UserDetailsService details() { return mock(UserDetailsService.class); }
         @Bean UsuarioRepository users() { return mock(UsuarioRepository.class); }
         @Bean JwtFilter filter(UsuarioRepository users, UserDetailsService details) {
-            return new JwtFilter(mock(JwtUtil.class), details, mock(SecurityIpService.class), users);
+            return new JwtFilter(mock(JwtUtil.class), details, mock(SecurityIpService.class), users, mock(SecurityPolicyService.class));
         }
         @Bean RoleRepository roles() { return mock(RoleRepository.class); }
         @Bean BackupRepository backups() { return mock(BackupRepository.class); }
